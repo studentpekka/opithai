@@ -5,38 +5,34 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="referrer" content="no-referrer">
     <title>Thai-puhekuulustelija</title>
- <!--
+    <!--
     ===========================================================================
     VERSIOHISTORIA (VERSION HISTORY / CHANGELOG)
     ===========================================================================
-    Versio: 2026-11-03 12:30
+    Versio: 2026-11-03 15:15
+      - Lisätty "Hinnat & Numerot" -kategoriaan pyydetyt numerot: 0, 6–10,
+        sekä luvut 200, 1000, 2000, 100000, 23, 67, 43, 1200, 1500 ja 3592
+        täydellisillä litteroinneilla, thai-merkeillä, vaihtoehdoilla ja lausuntaohjeilla.
+
+    Versio: 2026-11-03 13:00
+      - Lisätty takaisin puuttunut "⚙️ Asetukset / Tietoa" -painike ja modaali.
       - Toteutettu Vaihtoehto 5 (Hybridimoottori äänelle): Ensisijaisena 
-        Google TTS (<meta name="referrer" content="no-referrer">) ja varamoottorina 
-        selaimen oma speechSynthesis.
-      - Lisätty keskitetty "⚙️ Asetukset / Tietoa" -ponnahdusikkuna (Modal), 
-        joka näyttää versionumeron, tulevat asetukset ja historiallisen changelogin.
+        Google TTS (no-referrer) + varamoottorina selaimen speechSynthesis.
 
     Versio: 2026-11-03 11:22
       - Korjattu GitHub Pagesin CORS / 403 Forbidden -ääniongelma.
-      - Lisätty äänilistan latauskuuntelija (voiceschanged) työpöytä-Chromelle.
 
     Versio: 2026-11-03 08:22
-      - Lisätty versiohistoria koodikommentteihin ja versionumero käyttöliittymään.
       - Lisätty kysyttävän suomenkielisen sanan automaattinen äänentoisto (TTS fi-FI)
         sekä yläpalkin kytkin (Suomi-ääni: Päällä/Pois).
-      - Lisätty äänentoiston automaattinen katkaisu, kun mikrofoni käynnistetään.
       - Lisätty tekstikenttä kirjoittamalla vastaamista varten (Enter = Tarkista / Seuraava).
-      - Lisätty salliva tarkistuslogiikka (Fuzzy matching: kh/k, ph/p, th/t, ch/j jne.).
-      - Lisätty "Hyväksy vastaukseni (Oikein)" -painike (Override / Itsearviointi).
+      - Lisätty salliva tarkistuslogiikka (Fuzzy matching) ja itsearviointi.
 
     Versio: 2026-11-02 (Korjausversio)
-      - Palautettu monipuolinen tumma käyttöliittymä kategorioilla ja tilastoilla.
-      - Vaihdettu rikkinäinen Windowsin/selaimen oma thain äänisynteesi luotettavaan
-        Google Translate TTS -äänimoottoriin (varajärjestelmällä).
+      - Tumma käyttöliittymä, kategoriat ja Google Translate TTS.
 
     Versio: 2026-11-01 (Alkuperäinen versio)
-      - Ensimmäinen prototyyppi: Chrome webkitSpeechRecognition (th-TH),
-        kategoriat, kohteliaisuuspäätteet (khrap/kha) ja omat sanat (localStorage).
+      - Ensimmäinen prototyyppi: Chrome webkitSpeechRecognition (th-TH).
     ===========================================================================
     -->
     <style>
@@ -659,7 +655,7 @@
     </div>
 
     <div class="footer-info">
-        Versio: <strong id="footerVersion">2026-11-03 12:30</strong> • Vinkki: Paina <strong>Enter</strong> tarkistaaksesi tai siirtyäksesi eteenpäin, tai <strong>+</strong> hyväksyäksesi vastauksen oikeaksi.
+        Versio: <strong id="footerVersion">2026-11-03 15:15</strong> • Vinkki: Paina <strong>Enter</strong> tarkistaaksesi tai siirtyäksesi eteenpäin, tai <strong>+</strong> hyväksyäksesi vastauksen oikeaksi.
     </div>
 </div>
 
@@ -695,16 +691,15 @@
     <div class="modal">
         <h3>⚙️ Asetukset & Tietoa</h3>
         <div style="margin-bottom: 12px; font-size: 14px;">
-            Sovelluksen versio: <strong id="modalVersion" style="color: var(--accent-amber);">2026-11-03 12:30</strong>
+            Sovelluksen versio: <strong id="modalVersion" style="color: var(--accent-amber);">2026-11-03 15:15</strong>
         </div>
         <label style="display:block; font-size:13px; color:var(--text-muted); margin-bottom:4px;">Viimeisimmät muutokset (Changelog):</label>
         <div class="changelog-box">
-            <h4>Versio 2026-11-03 12:30 (Hybridimalli)</h4>
-            <p>• Äänimoottorina yhdistetty Google TTS (no-referrer) ja selaimen varapuhesynteesi.</p>
-            <p>• Lisätty keskitetty Asetukset- ja Tietoa-valikko.</p>
+            <h4>Versio 2026-11-03 15:15 (Numerotäydennys)</h4>
+            <p>• Lisätty numerot 0, 6–10, sekä luvut 200, 1000, 2000, 100000, 23, 67, 43, 1200, 1500 ja 3592 kategoriaan Hinnat & Numerot.</p>
             <br>
-            <h4>Versio 2026-11-03 08:22</h4>
-            <p>• Puheentunnistus, tekstivastaus, salliva vertailu ja itsearviointi.</p>
+            <h4>Versio 2026-11-03 13:00</h4>
+            <p>• Asetukset/Tietoa -valikko ja hybridimoottori.</p>
         </div>
         <div style="display:flex; justify-content:flex-end; margin-top:16px;">
             <button class="btn-next" onclick="closeSettingsModal()">Sulje</button>
@@ -713,7 +708,7 @@
 </div>
 
 <script>
-    const APP_VERSION = "2026-11-03 12:30";
+    const APP_VERSION = "2026-11-03 15:15";
     document.getElementById('footerVersion').innerText = APP_VERSION;
     document.getElementById('modalVersion').innerText = APP_VERSION;
 
@@ -730,14 +725,31 @@
         { cat: "Hinnat & Numerot", fi: "Kuinka paljon maksaa?", hint: "Hintaa kysyttäessä", th: "เท่าไหร่", rom: "thao-rai", alts: ["taorai", "thao rai", "tao rai"], guide: "Lausutaan: thao-rai" },
         { cat: "Hinnat & Numerot", fi: "Liian kallis", hint: "Tinkaamisessa", th: "แพงไป", rom: "phaeng pai", alts: ["peng pai", "paeng pai"], guide: "Lausutaan: phääng-pai" },
         { cat: "Hinnat & Numerot", fi: "Alennus (Voitko alentaa?)", hint: "Tinkaamisessa", th: "ลดได้ไหม", rom: "lot dai mai", alts: ["lod dai mai"], guide: "Lausutaan: lot-dai-mai" },
+        
+        { cat: "Hinnat & Numerot", fi: "Nolla (0)", hint: "Lukusana 0", th: "ศูนย์", rom: "soon", alts: ["sun"], guide: "Lausutaan: suun" },
         { cat: "Hinnat & Numerot", fi: "Yksi (1)", hint: "Lukusana 1", th: "หนึ่ง", rom: "nueng", alts: ["nung", "neung"], guide: "Lausutaan: nüng" },
         { cat: "Hinnat & Numerot", fi: "Kaksi (2)", hint: "Lukusana 2", th: "สอง", rom: "song", alts: ["soong"], guide: "Lausutaan: soong" },
         { cat: "Hinnat & Numerot", fi: "Kolme (3)", hint: "Lukusana 3", th: "สาม", rom: "sam", alts: ["saam"], guide: "Lausutaan: saam" },
         { cat: "Hinnat & Numerot", fi: "Neljä (4)", hint: "Lukusana 4", th: "สี่", rom: "see", alts: ["sii", "si"], guide: "Lausutaan: sii" },
         { cat: "Hinnat & Numerot", fi: "Viisi (5)", hint: "Lukusana 5", th: "ห้า", rom: "haa", alts: ["ha"], guide: "Lausutaan: haa" },
+        { cat: "Hinnat & Numerot", fi: "Kuusi (6)", hint: "Lukusana 6", th: "หก", rom: "hok", alts: ["hog"], guide: "Lausutaan: hok" },
+        { cat: "Hinnat & Numerot", fi: "Seitsemän (7)", hint: "Lukusana 7", th: "เจ็ด", rom: "chet", alts: ["ched"], guide: "Lausutaan: tšet" },
+        { cat: "Hinnat & Numerot", fi: "Kahdeksan (8)", hint: "Lukusana 8", th: "แปด", rom: "paet", alts: ["paed"], guide: "Lausutaan: päät" },
+        { cat: "Hinnat & Numerot", fi: "Yhdeksän (9)", hint: "Lukusana 9", th: "เก้า", rom: "kao", alts: ["gao"], guide: "Lausutaan: kaao" },
         { cat: "Hinnat & Numerot", fi: "Kymmenen (10)", hint: "Lukusana 10", th: "สิบ", rom: "sip", alts: ["sib"], guide: "Lausutaan: sip" },
+        
         { cat: "Hinnat & Numerot", fi: "Kaksikymmentä (20)", hint: "Lukusana 20", th: "ยี่สิบ", rom: "yee sip", alts: ["yii sip", "yisip"], guide: "Lausutaan: jii-sip" },
+        { cat: "Hinnat & Numerot", fi: "Kaksikymmentäkolme (23)", hint: "Lukusana 23", th: "ยี่สิบสาม", rom: "yee sip sam", alts: ["yisipsam", "yii sip saam"], guide: "Lausutaan: jii-sip-saam" },
+        { cat: "Hinnat & Numerot", fi: "Neljäkymmentäkolme (43)", hint: "Lukusana 43", th: "สี่สิบสาม", rom: "see sip sam", alts: ["si sip sam", "seesipsam"], guide: "Lausutaan: sii-sip-saam" },
+        { cat: "Hinnat & Numerot", fi: "Kuusikymmentäseitsemän (67)", hint: "Lukusana 67", th: "หกสิบเจ็ด", rom: "hok sip chet", alts: ["hoksipchet", "hok sip ched"], guide: "Lausutaan: hok-sip-tšet" },
         { cat: "Hinnat & Numerot", fi: "Sata (100)", hint: "Lukusana 100", th: "หนึ่งร้อย", rom: "nueng roi", alts: ["roi", "nung roi"], guide: "Lausutaan: nüng-rooi" },
+        { cat: "Hinnat & Numerot", fi: "Kaksisataa (200)", hint: "Lukusana 200", th: "สองร้อย", rom: "song roi", alts: ["soong roi", "songroi"], guide: "Lausutaan: soong-rooi" },
+        { cat: "Hinnat & Numerot", fi: "Tuhat (1000)", hint: "Lukusana 1000", th: "หนึ่งพัน", rom: "nueng phan", alts: ["phan", "nung phan"], guide: "Lausutaan: nüng-phan" },
+        { cat: "Hinnat & Numerot", fi: "Tuhatkaksisataa (1200)", hint: "Lukusana 1200", th: "หนึ่งพันสองร้อย", rom: "nueng phan song roi", alts: ["nuengphansongroi"], guide: "Lausutaan: nüng-phan-soong-rooi" },
+        { cat: "Hinnat & Numerot", fi: "Tuhatviisisataa (1500)", hint: "Lukusana 1500", th: "หนึ่งพันห้าร้อย", rom: "nueng phan ha roi", alts: ["nuengphanharoi"], guide: "Lausutaan: nüng-phan-haa-rooi" },
+        { cat: "Hinnat & Numerot", fi: "Kaksituhatta (2000)", hint: "Lukusana 2000", th: "สองพัน", rom: "song phan", alts: ["soong phan", "songphan"], guide: "Lausutaan: soong-phan" },
+        { cat: "Hinnat & Numerot", fi: "Kolmetuhatta viisisataa yhdeksänkymmentäkaksi (3592)", hint: "Lukusana 3592", th: "สามพันห้าร้อยเก้าสิบสอง", rom: "sam phan ha roi kao sip song", alts: ["samphanharoikaosipsong"], guide: "Lausutaan: saam-phan-haa-rooi-kaao-sip-soong" },
+        { cat: "Hinnat & Numerot", fi: "Sata tuhatta (100000)", hint: "Lukusana 100 000", th: "หนึ่งแสน", rom: "nueng saen", alts: ["nung saen", "saen"], guide: "Lausutaan: nüng-sään" },
 
         { cat: "Ravintola & Ruoka", fi: "Vesi", hint: "Juomavesi", th: "น้ำ", rom: "nam", alts: ["naam", "nam plao"], guide: "Lausutaan: naam" },
         { cat: "Ravintola & Ruoka", fi: "Kana", hint: "Ruoka-aine", th: "ไก่", rom: "gai", alts: ["kai"], guide: "Lausutaan: gai" },
@@ -839,7 +851,6 @@
         }
     }
 
-    // Hybridimoottori (Vaihtoehto 5): Google TTS -> Varatoimintona speechSynthesis
     function playThaiAudio(slow = false) {
         userHasInteracted = true;
         stopAllAudio();
@@ -1127,7 +1138,6 @@
         }
     }
 
-    // Modal - Omat sanat
     function openWordModal() {
         document.getElementById('wordModal').style.display = 'flex';
     }
@@ -1136,7 +1146,6 @@
         document.getElementById('wordModal').style.display = 'none';
     }
 
-    // Modal - Asetukset / Tietoa
     function openSettingsModal() {
         document.getElementById('settingsModal').style.display = 'flex';
     }
