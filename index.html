@@ -794,7 +794,8 @@
         }
     }
 
-    // Toistaa thainkielisen vastauksen (Google TTS + varajärjestelmä)
+
+// Toistaa thainkielisen vastauksen (Standardi SpeechSynthesis API)
     function playThaiAudio(slow = false) {
         userHasInteracted = true;
         stopAllAudio();
@@ -806,22 +807,22 @@
         if (politeMode === "khrap") thaiToSpeak += " ครับ";
         else if (politeMode === "kha") thaiToSpeak += " ค่ะ";
 
-        const rate = slow ? 0.55 : audioSpeed;
-        const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=th&q=${encodeURIComponent(thaiToSpeak)}`;
+        const rate = slow ? 0.6 : audioSpeed;
 
-        const audio = new Audio(url);
-        audio.playbackRate = rate;
-        currentAudioObj = audio;
+        if ('speechSynthesis' in window) {
+            const utter = new SpeechSynthesisUtterance(thaiToSpeak);
+            utter.lang = 'th-TH';
+            utter.rate = rate;
 
-        audio.play().catch(() => {
-            // Varajärjestelmä: selaimen oma th-TH synteesi
-            if ('speechSynthesis' in window) {
-                const u = new SpeechSynthesisUtterance(thaiToSpeak);
-                u.lang = 'th-TH';
-                u.rate = rate;
-                window.speechSynthesis.speak(u);
+            // Haetaan järjestelmän thainkielinen ääni, jos saatavilla
+            const voices = window.speechSynthesis.getVoices();
+            const thVoice = voices.find(v => v.lang.startsWith('th'));
+            if (thVoice) {
+                utter.voice = thVoice;
             }
-        });
+
+            window.speechSynthesis.speak(utter);
+        }
     }
 
     // =========================================================================
