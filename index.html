@@ -3,13 +3,24 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
     <title>Thai-puhekuulustelija</title>
-    <!--
+ <!--
     ===========================================================================
-    VERSIOHISTORIA (VERSION HISTORY)
+    VERSIOHISTORIA (VERSION HISTORY / CHANGELOG)
     ===========================================================================
+    Versio: 2026-11-03 12:30
+      - Toteutettu Vaihtoehto 5 (Hybridimoottori äänelle): Ensisijaisena 
+        Google TTS (<meta name="referrer" content="no-referrer">) ja varamoottorina 
+        selaimen oma speechSynthesis.
+      - Lisätty keskitetty "⚙️ Asetukset / Tietoa" -ponnahdusikkuna (Modal), 
+        joka näyttää versionumeron, tulevat asetukset ja historiallisen changelogin.
+
+    Versio: 2026-11-03 11:22
+      - Korjattu GitHub Pagesin CORS / 403 Forbidden -ääniongelma.
+      - Lisätty äänilistan latauskuuntelija (voiceschanged) työpöytä-Chromelle.
+
     Versio: 2026-11-03 08:22
-    Muutokset:
       - Lisätty versiohistoria koodikommentteihin ja versionumero käyttöliittymään.
       - Lisätty kysyttävän suomenkielisen sanan automaattinen äänentoisto (TTS fi-FI)
         sekä yläpalkin kytkin (Suomi-ääni: Päällä/Pois).
@@ -192,6 +203,13 @@
             font-weight: 600;
         }
 
+        .setting-btn.info-btn {
+            background-color: rgba(56, 189, 248, 0.12);
+            color: var(--accent-blue);
+            border-color: rgba(56, 189, 248, 0.4);
+            font-weight: 600;
+        }
+
         /* Main Quiz Card */
         .quiz-top-bar {
             display: flex;
@@ -287,7 +305,7 @@
             margin-top: 8px;
         }
 
-        /* Action Controls (Speak + Type) */
+        /* Action Controls */
         .action-buttons {
             display: flex;
             justify-content: center;
@@ -345,7 +363,7 @@
             border-color: var(--text-muted);
         }
 
-        /* Text Input Area */
+        /* Text Input */
         .text-input-row {
             display: flex;
             max-width: 520px;
@@ -387,7 +405,7 @@
             margin-bottom: 10px;
         }
 
-        /* Result & Visual Transcription Box */
+        /* Result Box */
         .result-box {
             background-color: var(--bg-main);
             border: 2px solid var(--border-color);
@@ -468,7 +486,7 @@
             cursor: pointer;
         }
 
-        /* Modal for adding custom words */
+        /* Modal Base */
         .modal-backdrop {
             position: fixed;
             inset: 0;
@@ -484,13 +502,33 @@
             background-color: var(--bg-card);
             border: 1px solid var(--border-color);
             border-radius: 16px;
-            max-width: 440px;
+            max-width: 480px;
             width: 100%;
             padding: 22px;
         }
 
         .modal h3 {
             margin-bottom: 14px;
+            color: var(--text-main);
+        }
+
+        .changelog-box {
+            background-color: var(--bg-main);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 12px;
+            font-size: 13px;
+            color: var(--text-muted);
+            max-height: 200px;
+            overflow-y: auto;
+            margin-bottom: 16px;
+            line-height: 1.4;
+        }
+
+        .changelog-box h4 {
+            color: var(--accent-blue);
+            margin-bottom: 4px;
+            font-size: 13px;
         }
 
         .form-group {
@@ -529,7 +567,6 @@
 <body>
 
 <div class="container">
-    <!-- YLÄPALKIN OTSIKKO -->
     <div class="panel">
         <div class="header-row">
             <div class="title-group">
@@ -538,15 +575,17 @@
             </div>
             <div class="status-badges">
                 <span class="badge badge-green" id="micBadge">● Mikrofoni: Thai (th-TH)</span>
-                <span class="badge badge-purple">● Ääni: Google / Selaimen TTS</span>
+                <span class="badge badge-purple" id="audioEngineBadge">● Ääni: Hybrid (Google+TTS)</span>
             </div>
         </div>
     </div>
 
-    <!-- KATEGORIAT JA ASETUKSET -->
     <div class="panel">
         <div class="categories-row" id="categoriesContainer"></div>
         <div class="settings-row">
+            <button class="setting-btn info-btn" onclick="openSettingsModal()">
+                ⚙️ Asetukset / Tietoa
+            </button>
             <button class="setting-btn" onclick="toggleFiAudio()">
                 Suomi-ääni: <strong id="fiAudioLabel">Päällä</strong>
             </button>
@@ -556,13 +595,12 @@
             <button class="setting-btn blue-val" onclick="toggleSpeed()">
                 Nopeus: <strong id="speedLabel">0.85x (Selkeä)</strong>
             </button>
-            <button class="setting-btn add-word-btn" onclick="openModal()">
+            <button class="setting-btn add-word-btn" onclick="openWordModal()">
                 + Omat sanat
             </button>
         </div>
     </div>
 
-    <!-- VARSINAINEN KUULUSTELUKORTTI -->
     <div class="panel">
         <div class="quiz-top-bar">
             <div class="quiz-top-left">
@@ -585,7 +623,6 @@
             <div class="question-hint" id="questionHint"></div>
         </div>
 
-        <!-- PUHE- JA NÄYTÄ-PAINIKKEET -->
         <div class="action-buttons">
             <button class="btn-speak" id="micBtn" onclick="toggleListening()">
                 🎙️ Puhu vastaus thaiksi
@@ -595,7 +632,6 @@
             </button>
         </div>
 
-        <!-- KIRJOITUSKENTTÄ -->
         <div class="text-input-row">
             <input type="text" id="textAnswerInput" class="text-input" 
                    placeholder="Tai kirjoita vastaus (esim. khop khun) ja paina Enter..." 
@@ -605,7 +641,6 @@
 
         <div class="status-line" id="statusLine">Voit vastata puhumalla tai kirjoittamalla.</div>
 
-        <!-- VASTAUSLAATIKKO -->
         <div class="result-box" id="resultBox">
             <div class="feedback-banner" id="feedbackBanner"></div>
             <div class="romanized-big" id="romanizedText"></div>
@@ -624,91 +659,109 @@
     </div>
 
     <div class="footer-info">
-        Versio: <strong>2026-11-03 08:22</strong> • Vinkki: Paina <strong>Enter</strong> tarkistaaksesi tai siirtyäksesi seuraavaan sanaan, tai <strong>+</strong> hyväksyäksesi vastauksen oikeaksi.
+        Versio: <strong id="footerVersion">2026-11-03 12:30</strong> • Vinkki: Paina <strong>Enter</strong> tarkistaaksesi tai siirtyäksesi eteenpäin, tai <strong>+</strong> hyväksyäksesi vastauksen oikeaksi.
     </div>
 </div>
 
-<!-- OMAT SANAT -IKKUNA -->
+<!-- Omat sanat -modaali -->
 <div class="modal-backdrop" id="wordModal">
     <div class="modal">
         <h3>Lisää oma sana tai fraasi</h3>
         <div class="form-group">
-            <label>Sana suomeksi (esim. Kana / Ei tulista)</label>
+            <label>Sana suomeksi</label>
             <input type="text" id="customFi" placeholder="Suomeksi..." />
         </div>
         <div class="form-group">
-            <label>Litterointi eli kirjoitusasu (esim. gai / mai phet)</label>
+            <label>Litterointi (kirjoitusasu)</label>
             <input type="text" id="customRom" placeholder="Litterointi..." />
         </div>
         <div class="form-group">
-            <label>Thaiksi (valinnainen, esim. ไก่)</label>
-            <input type="text" id="customTh" placeholder="Thain merkeillä (jos tiedossa)..." />
+            <label>Thaiksi (valinnainen)</label>
+            <input type="text" id="customTh" placeholder="Thain merkeillä..." />
         </div>
         <div class="form-group">
-            <label>Vinkki / Ääntämisohje (valinnainen)</label>
+            <label>Vinkki (valinnainen)</label>
             <input type="text" id="customHint" placeholder="Muistisääntö..." />
         </div>
         <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
-            <button class="btn-secondary" onclick="closeModal()">Peruuta</button>
+            <button class="btn-secondary" onclick="closeWordModal()">Peruuta</button>
             <button class="btn-next" onclick="saveCustomWord()">Tallenna sana</button>
         </div>
     </div>
 </div>
 
+<!-- Asetukset / Tietoa -modaali -->
+<div class="modal-backdrop" id="settingsModal">
+    <div class="modal">
+        <h3>⚙️ Asetukset & Tietoa</h3>
+        <div style="margin-bottom: 12px; font-size: 14px;">
+            Sovelluksen versio: <strong id="modalVersion" style="color: var(--accent-amber);">2026-11-03 12:30</strong>
+        </div>
+        <label style="display:block; font-size:13px; color:var(--text-muted); margin-bottom:4px;">Viimeisimmät muutokset (Changelog):</label>
+        <div class="changelog-box">
+            <h4>Versio 2026-11-03 12:30 (Hybridimalli)</h4>
+            <p>• Äänimoottorina yhdistetty Google TTS (no-referrer) ja selaimen varapuhesynteesi.</p>
+            <p>• Lisätty keskitetty Asetukset- ja Tietoa-valikko.</p>
+            <br>
+            <h4>Versio 2026-11-03 08:22</h4>
+            <p>• Puheentunnistus, tekstivastaus, salliva vertailu ja itsearviointi.</p>
+        </div>
+        <div style="display:flex; justify-content:flex-end; margin-top:16px;">
+            <button class="btn-next" onclick="closeSettingsModal()">Sulje</button>
+        </div>
+    </div>
+</div>
+
 <script>
-    // =========================================================================
-    // PERUSSANASTO (Jaettuna kategorioihin)
-    // =========================================================================
+    const APP_VERSION = "2026-11-03 12:30";
+    document.getElementById('footerVersion').innerText = APP_VERSION;
+    document.getElementById('modalVersion').innerText = APP_VERSION;
+
     const defaultWords = [
-        // Perusteet (8)
         { cat: "Perusteet", fi: "Hei / Päivää", hint: "Yleistervehdys", th: "สวัสดี", rom: "sawasdee", alts: ["sawatdee", "sawadee", "savatdii", "savadii"], guide: "Lausutaan: sa-wat-dii" },
         { cat: "Perusteet", fi: "Kiitos", hint: "Kun kiität palvelusta tai avusta", th: "ขอบคุณ", rom: "khop khun", alts: ["kop kun", "khob khun", "kap kun", "kob kun"], guide: "Lausutaan: khoop-khun (selkeä o)" },
-        { cat: "Perusteet", fi: "Kyllä", hint: "Myöntävä vastaus (on / pitää paikkansa)", th: "ใช่", rom: "chai", alts: ["jai", "sai", "tshai"], guide: "Lausutaan: tšai (laskeva tooni)" },
-        { cat: "Perusteet", fi: "Ei", hint: "Yleinen kieltosana", th: "ไม่", rom: "mai", alts: ["mai chai"], guide: "Lausutaan: mai (tai 'mai chai' = ei ole)" },
-        { cat: "Perusteet", fi: "Onnistuu / Käy (Voida)", hint: "Kun jokin asia sopii tai on mahdollista", th: "ได้", rom: "dai", alts: ["daai"], guide: "Lausutaan: dai" },
-        { cat: "Perusteet", fi: "Anteeksi (Pahoittelu / Huomion pyytäminen)", hint: "Kun pahoittelet tai pyydät tietä / tarjoilijan huomiota", th: "ขอโทษ", rom: "kho thot", alts: ["ko tot", "kho tot", "khor thot"], guide: "Lausutaan: khoo-thoot" },
+        { cat: "Perusteet", fi: "Kyllä", hint: "Myöntävä vastaus", th: "ใช่", rom: "chai", alts: ["jai", "sai", "tshai"], guide: "Lausutaan: tšai (laskeva tooni)" },
+        { cat: "Perusteet", fi: "Ei", hint: "Yleinen kieltosana", th: "ไม่", rom: "mai", alts: ["mai chai"], guide: "Lausutaan: mai" },
+        { cat: "Perusteet", fi: "Onnistuu / Käy (Voida)", hint: "Kun jokin sopii tai on mahdollista", th: "ได้", rom: "dai", alts: ["daai"], guide: "Lausutaan: dai" },
+        { cat: "Perusteet", fi: "Anteeksi (Pahoittelu / Huomion pyytäminen)", hint: "Pahoittelu tai huomion pyyntö", th: "ขอโทษ", rom: "kho thot", alts: ["ko tot", "kho tot", "khor thot"], guide: "Lausutaan: khoo-thoot" },
         { cat: "Perusteet", fi: "Ei se mitään / Ole hyvä", hint: "Vastaus kiitokseen tai pahoitteluun", th: "ไม่เป็นไร", rom: "mai pen rai", alts: ["mai ben rai", "maipenrai"], guide: "Lausutaan: mai-pen-rai" },
-        { cat: "Perusteet", fi: "En ymmärrä", hint: "Kun et ymmärrä, mitä toinen sanoo", th: "ไม่เข้าใจ", rom: "mai khao jai", alts: ["mai kao jai", "mai kao chai"], guide: "Lausutaan: mai-khao-tšai" },
+        { cat: "Perusteet", fi: "En ymmärrä", hint: "Kun et ymmärrä puhetta", th: "ไม่เข้าใจ", rom: "mai khao jai", alts: ["mai kao jai", "mai kao chai"], guide: "Lausutaan: mai-khao-tšai" },
 
-        // Hinnat & Numerot (11)
         { cat: "Hinnat & Numerot", fi: "Kuinka paljon maksaa?", hint: "Hintaa kysyttäessä", th: "เท่าไหร่", rom: "thao-rai", alts: ["taorai", "thao rai", "tao rai"], guide: "Lausutaan: thao-rai" },
-        { cat: "Hinnat & Numerot", fi: "Liian kallis", hint: "Tinkaamisessa", th: "แพงไป", rom: "phaeng pai", alts: ["peng pai", "paeng pai", "phaeng"], guide: "Lausutaan: phääng-pai" },
-        { cat: "Hinnat & Numerot", fi: "Alennus (Voitko alentaa hintaa?)", hint: "Tinkaamisessa: 'lot dai mai'", th: "ลดได้ไหม", rom: "lot dai mai", alts: ["lod dai mai", "lot daimai"], guide: "Lausutaan: lot-dai-mai" },
+        { cat: "Hinnat & Numerot", fi: "Liian kallis", hint: "Tinkaamisessa", th: "แพงไป", rom: "phaeng pai", alts: ["peng pai", "paeng pai"], guide: "Lausutaan: phääng-pai" },
+        { cat: "Hinnat & Numerot", fi: "Alennus (Voitko alentaa?)", hint: "Tinkaamisessa", th: "ลดได้ไหม", rom: "lot dai mai", alts: ["lod dai mai"], guide: "Lausutaan: lot-dai-mai" },
         { cat: "Hinnat & Numerot", fi: "Yksi (1)", hint: "Lukusana 1", th: "หนึ่ง", rom: "nueng", alts: ["nung", "neung"], guide: "Lausutaan: nüng" },
-        { cat: "Hinnat & Numerot", fi: "Kaksi (2)", hint: "Lukusana 2", th: "สอง", rom: "song", alts: ["soong"], guide: "Lausutaan: soong (nouseva)" },
+        { cat: "Hinnat & Numerot", fi: "Kaksi (2)", hint: "Lukusana 2", th: "สอง", rom: "song", alts: ["soong"], guide: "Lausutaan: soong" },
         { cat: "Hinnat & Numerot", fi: "Kolme (3)", hint: "Lukusana 3", th: "สาม", rom: "sam", alts: ["saam"], guide: "Lausutaan: saam" },
         { cat: "Hinnat & Numerot", fi: "Neljä (4)", hint: "Lukusana 4", th: "สี่", rom: "see", alts: ["sii", "si"], guide: "Lausutaan: sii" },
-        { cat: "Hinnat & Numerot", fi: "Viisi (5)", hint: "Lukusana 5", th: "ห้า", rom: "haa", alts: ["ha"], guide: "Lausutaan: haa (laskeva)" },
+        { cat: "Hinnat & Numerot", fi: "Viisi (5)", hint: "Lukusana 5", th: "ห้า", rom: "haa", alts: ["ha"], guide: "Lausutaan: haa" },
         { cat: "Hinnat & Numerot", fi: "Kymmenen (10)", hint: "Lukusana 10", th: "สิบ", rom: "sip", alts: ["sib"], guide: "Lausutaan: sip" },
         { cat: "Hinnat & Numerot", fi: "Kaksikymmentä (20)", hint: "Lukusana 20", th: "ยี่สิบ", rom: "yee sip", alts: ["yii sip", "yisip"], guide: "Lausutaan: jii-sip" },
         { cat: "Hinnat & Numerot", fi: "Sata (100)", hint: "Lukusana 100", th: "หนึ่งร้อย", rom: "nueng roi", alts: ["roi", "nung roi"], guide: "Lausutaan: nüng-rooi" },
 
-        // Ravintola & Ruoka (8)
         { cat: "Ravintola & Ruoka", fi: "Vesi", hint: "Juomavesi", th: "น้ำ", rom: "nam", alts: ["naam", "nam plao"], guide: "Lausutaan: naam" },
-        { cat: "Ravintola & Ruoka", fi: "Kana", hint: "Ruoka-aine", th: "ไก่", rom: "gai", alts: ["kai"], guide: "Lausutaan: gai (pehmeä k/g)" },
-        { cat: "Ravintola & Ruoka", fi: "Ei tulista", hint: "Kun tilaat ruokaa", th: "ไม่เผ็ด", rom: "mai phet", alts: ["mai pet", "maiphet"], guide: "Lausutaan: mai-phet" },
-        { cat: "Ravintola & Ruoka", fi: "Herkullista / Hyvää", hint: "Ruoan kehuminen", th: "อร่อย", rom: "aroi", alts: ["aroy"], guide: "Lausutaan: a-roi" },
-        { cat: "Ravintola & Ruoka", fi: "Lasku, kiitos", hint: "Ravintolassa maksettaessa", th: "เช็คบิล", rom: "chek bin", alts: ["check bin", "kep tang"], guide: "Lausutaan: tšek-bin" },
-        { cat: "Ravintola & Ruoka", fi: "Kahvi", hint: "Juoma", th: "กาแฟ", rom: "kafae", alts: ["gafae", "kafe", "gafe"], guide: "Lausutaan: gaa-fää" },
+        { cat: "Ravintola & Ruoka", fi: "Kana", hint: "Ruoka-aine", th: "ไก่", rom: "gai", alts: ["kai"], guide: "Lausutaan: gai" },
+        { cat: "Ravintola & Ruoka", fi: "Ei tulista", hint: "Tilattaessa", th: "ไม่เผ็ด", rom: "mai phet", alts: ["mai pet", "maiphet"], guide: "Lausutaan: mai-phet" },
+        { cat: "Ravintola & Ruoka", fi: "Herkullista / Hyvää", hint: "Kehuminen", th: "อร่อย", rom: "aroi", alts: ["aroy"], guide: "Lausutaan: a-roi" },
+        { cat: "Ravintola & Ruoka", fi: "Lasku, kiitos", hint: "Maksettaessa", th: "เช็คบิล", rom: "chek bin", alts: ["check bin"], guide: "Lausutaan: tšek-bin" },
+        { cat: "Ravintola & Ruoka", fi: "Kahvi", hint: "Juoma", th: "กาแฟ", rom: "kafae", alts: ["gafae", "kafe"], guide: "Lausutaan: gaa-fää" },
         { cat: "Ravintola & Ruoka", fi: "Olut", hint: "Juoma", th: "เบียร์", rom: "bia", alts: ["beer"], guide: "Lausutaan: bia" },
-        { cat: "Ravintola & Ruoka", fi: "Riisi", hint: "Peruslisuke", th: "ข้าว", rom: "khao", alts: ["kao", "khaw"], guide: "Lausutaan: khaao" },
+        { cat: "Ravintola & Ruoka", fi: "Riisi", hint: "Peruslisuke", th: "ข้าว", rom: "khao", alts: ["kao"], guide: "Lausutaan: khaao" },
 
-        // Liikkuminen (6)
-        { cat: "Liikkuminen", fi: "Missä on...?", hint: "Lisää paikka eteen, esim. 'Hong nam yuu thii nai'", th: "อยู่ที่ไหน", rom: "yuu thii nai", alts: ["yu ti nai", "yuu tii nai", "thii nai"], guide: "Lausutaan: juu-thii-nai" },
-        { cat: "Liikkuminen", fi: "WC / Vessa", hint: "Kirjaimellisesti vesihuone", th: "ห้องน้ำ", rom: "hong nam", alts: ["hong naam", "hongnam"], guide: "Lausutaan: hong-naam" },
-        { cat: "Liikkuminen", fi: "Suoraan eteenpäin", hint: "Takseille ja suunnissa", th: "ตรงไป", rom: "trong pai", alts: ["tong pai", "trongpai"], guide: "Lausutaan: trong-pai" },
-        { cat: "Liikkuminen", fi: "Käänny vasemmalle", hint: "Suuntaohje", th: "เลี้ยวซ้าย", rom: "liao sai", alts: ["leow sai", "liao saai"], guide: "Lausutaan: liao-saai" },
-        { cat: "Liikkuminen", fi: "Käänny oikealle", hint: "Suuntaohje", th: "เลี้ยวขวา", rom: "liao khwaa", alts: ["liao kwa", "leow khwa"], guide: "Lausutaan: liao-khwaa" },
-        { cat: "Liikkuminen", fi: "Pysähdy tässä", hint: "Taksille tai lavataksille", th: "จอดที่นี่", rom: "jot thii nii", alts: ["chot thii nii", "jod ti ni", "yut"], guide: "Lausutaan: tšot-thii-nii" }
+        { cat: "Liikkuminen", fi: "Missä on...?", hint: "Esim. 'Hong nam yuu thii nai'", th: "อยู่ที่ไหน", rom: "yuu thii nai", alts: ["yu ti nai", "thii nai"], guide: "Lausutaan: juu-thii-nai" },
+        { cat: "Liikkuminen", fi: "WC / Vessa", hint: "Vesihuone", th: "ห้องน้ำ", rom: "hong nam", alts: ["hong naam", "hongnam"], guide: "Lausutaan: hong-naam" },
+        { cat: "Liikkuminen", fi: "Suoraan eteenpäin", hint: "Suuntaohje", th: "ตรงไป", rom: "trong pai", alts: ["tong pai"], guide: "Lausutaan: trong-pai" },
+        { cat: "Liikkuminen", fi: "Käänny vasemmalle", hint: "Suuntaohje", th: "เลี้ยวซ้าย", rom: "liao sai", alts: ["leow sai"], guide: "Lausutaan: liao-saai" },
+        { cat: "Liikkuminen", fi: "Käänny oikealle", hint: "Suuntaohje", th: "เลี้ยวขวา", rom: "liao khwaa", alts: ["liao kwa"], guide: "Lausutaan: liao-khwaa" },
+        { cat: "Liikkuminen", fi: "Pysähdy tässä", hint: "Taksille", th: "จอดที่นี่", rom: "jot thii nii", alts: ["chot thii nii"], guide: "Lausutaan: tšot-thii-nii" }
     ];
 
-    // Tila- ja asetusmuuttujat
     let customWords = JSON.parse(localStorage.getItem('thai_custom_words') || '[]');
     let currentCategory = "Perusteet";
     let activeList = [];
     let currentIndex = 0;
 
-    let politeMode = "khrap"; // "khrap" | "kha" | "none"
+    let politeMode = "khrap";
     let audioSpeed = 0.85;
     let fiAudioEnabled = true;
     let userHasInteracted = false;
@@ -722,9 +775,6 @@
     let isListening = false;
     let currentAudioObj = null;
 
-    // =========================================================================
-    // PUHEENTUNNISTUKSEN ALUSTUS (Chrome th-TH)
-    // =========================================================================
     const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
     if (SpeechRec) {
         recognition = new SpeechRec();
@@ -746,7 +796,7 @@
         };
 
         recognition.onerror = (event) => {
-            document.getElementById('statusLine').innerText = "Mikrofoni ei kuullut selkeästi (" + event.error + "). Yritä uudelleen tai kirjoita vastaus.";
+            document.getElementById('statusLine').innerText = "Mikrofoni ei kuullut selkeästi (" + event.error + "). Yritä uudelleen tai kirjoita.";
         };
 
         recognition.onend = () => {
@@ -759,9 +809,6 @@
         document.getElementById('micBadge').innerText = "⚠️ Selain ei tue puheentunnistusta";
     }
 
-    // =========================================================================
-    // ÄÄNIMOOTTORI: SUOMI (Kysymys) & THAI (Vastaus) + Katkaisutoiminto
-    // =========================================================================
     function stopAllAudio() {
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
@@ -773,17 +820,15 @@
         }
     }
 
-    // Lukee kysyttävän suomenkielisen sanan ääneen (poistaa sulkeissa olevat lisäohjeet)
     function speakFinnishQuestion(force = false) {
         if (!fiAudioEnabled && !force) return;
-        if (!userHasInteracted && !force) return; // Estää selaimen autoplay-virheen 1. latauksella
+        if (!userHasInteracted && !force) return;
         if (isListening) return;
 
         stopAllAudio();
         const word = activeList[currentIndex];
         if (!word) return;
 
-        // Poistetaan sulkeet, esim. "Anteeksi (Pahoittelu)" -> "Anteeksi"
         const cleanFi = word.fi.replace(/\s*\(.*?\)\s*/g, '').trim();
 
         if ('speechSynthesis' in window) {
@@ -794,8 +839,7 @@
         }
     }
 
-
-// Toistaa thainkielisen vastauksen (Standardi SpeechSynthesis API)
+    // Hybridimoottori (Vaihtoehto 5): Google TTS -> Varatoimintona speechSynthesis
     function playThaiAudio(slow = false) {
         userHasInteracted = true;
         stopAllAudio();
@@ -807,31 +851,28 @@
         if (politeMode === "khrap") thaiToSpeak += " ครับ";
         else if (politeMode === "kha") thaiToSpeak += " ค่ะ";
 
-        const rate = slow ? 0.6 : audioSpeed;
+        const rate = slow ? 0.55 : audioSpeed;
+        const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=th&q=${encodeURIComponent(thaiToSpeak)}`;
 
-        if ('speechSynthesis' in window) {
-            const utter = new SpeechSynthesisUtterance(thaiToSpeak);
-            utter.lang = 'th-TH';
-            utter.rate = rate;
+        const audio = new Audio(url);
+        audio.referrerPolicy = "no-referrer";
+        audio.playbackRate = rate;
+        currentAudioObj = audio;
 
-            // Haetaan järjestelmän thainkielinen ääni, jos saatavilla
-            const voices = window.speechSynthesis.getVoices();
-            const thVoice = voices.find(v => v.lang.startsWith('th'));
-            if (thVoice) {
-                utter.voice = thVoice;
+        audio.play().catch(() => {
+            if ('speechSynthesis' in window) {
+                const u = new SpeechSynthesisUtterance(thaiToSpeak);
+                u.lang = 'th-TH';
+                u.rate = rate;
+                window.speechSynthesis.speak(u);
             }
-
-            window.speechSynthesis.speak(utter);
-        }
+        });
     }
 
-    // =========================================================================
-    // NORMALISOINTI JA SALLIVA TARKISTUS (FUZZY MATCHING)
-    // =========================================================================
     function normalizeRomanized(str) {
         return (str || "")
             .toLowerCase()
-            .replace(/\b(khrap|krap|kap|kha|ka)\b/g, '') // Poistetaan kohteliaisuuspäätteet vertailusta
+            .replace(/\b(khrap|krap|kap|kha|ka)\b/g, '')
             .replace(/[-_.,?!]/g, ' ')
             .replace(/kh/g, 'k')
             .replace(/ph/g, 'p')
@@ -856,14 +897,12 @@
         const raw = userInput.trim();
         if (!raw) return false;
 
-        // 1. Tarkistetaan thain merkeillä (jos puheentunnistus palautti thaita)
         const cleanUserThai = normalizeThaiScript(raw);
         const cleanTargetThai = normalizeThaiScript(wordObj.th);
         if (cleanUserThai && cleanTargetThai && (cleanUserThai.includes(cleanTargetThai) || cleanTargetThai.includes(cleanUserThai))) {
             return true;
         }
 
-        // 2. Tarkistetaan latinalaisilla aakkosilla (Fuzzy)
         const normUser = normalizeRomanized(raw);
         const candidates = [wordObj.rom, ...(wordObj.alts || [])];
         for (let c of candidates) {
@@ -874,9 +913,6 @@
         return false;
     }
 
-    // =========================================================================
-    // KYSYMYKSEN NÄYTTÖ JA VASTAUKSEN KÄSITTELY
-    // =========================================================================
     function buildCategories() {
         const allWords = [...defaultWords, ...customWords];
         const categories = [
@@ -914,7 +950,7 @@
         }
 
         if (activeList.length === 0) {
-            alert("Tässä kategoriassa ei ole vielä sanoja. Lisää ensin omia sanoja!");
+            alert("Tässä kategoriassa ei ole sanoja. Lisää ensin omia sanoja!");
             selectCategory("Perusteet");
             return;
         }
@@ -944,7 +980,6 @@
 
     function toggleListening() {
         userHasInteracted = true;
-        // Katkaistaan suomenkielinen kysymysääni välittömästi, jotta mikki ei kuule sitä!
         stopAllAudio();
 
         if (!recognition) {
@@ -1024,7 +1059,6 @@
         playThaiAudio(false);
     }
 
-    // OMA HYVÄKSYNTÄ (OVERRIDE)
     function overrideAsCorrect() {
         if (!answerRevealed || currentRoundCorrect) return;
         currentRoundCorrect = true;
@@ -1057,9 +1091,6 @@
         document.getElementById('totalCount').innerText = totalCount;
     }
 
-    // =========================================================================
-    // ASETUSTEN KYTKIMET & OMAT SANAT
-    // =========================================================================
     function toggleFiAudio() {
         userHasInteracted = true;
         fiAudioEnabled = !fiAudioEnabled;
@@ -1096,12 +1127,22 @@
         }
     }
 
-    function openModal() {
+    // Modal - Omat sanat
+    function openWordModal() {
         document.getElementById('wordModal').style.display = 'flex';
     }
 
-    function closeModal() {
+    function closeWordModal() {
         document.getElementById('wordModal').style.display = 'none';
+    }
+
+    // Modal - Asetukset / Tietoa
+    function openSettingsModal() {
+        document.getElementById('settingsModal').style.display = 'flex';
+    }
+
+    function closeSettingsModal() {
+        document.getElementById('settingsModal').style.display = 'none';
     }
 
     function saveCustomWord() {
@@ -1123,15 +1164,13 @@
         document.getElementById('customRom').value = '';
         document.getElementById('customTh').value = '';
         document.getElementById('customHint').value = '';
-        closeModal();
+        closeWordModal();
         buildCategories();
     }
 
-    // =========================================================================
-    // NÄPPÄIMISTÖN PIKAKOMENNOT (Enter = Tarkista / Seuraava, + = Hyväksy)
-    // =========================================================================
     document.addEventListener('keydown', (e) => {
-        if (document.getElementById('wordModal').style.display === 'flex') return;
+        if (document.getElementById('wordModal').style.display === 'flex' || 
+            document.getElementById('settingsModal').style.display === 'flex') return;
 
         if (e.key === 'Enter') {
             e.preventDefault();
@@ -1148,7 +1187,6 @@
         }
     });
 
-    // Käynnistys
     selectCategory("Perusteet");
 </script>
 
