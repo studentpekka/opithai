@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="fi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thai-puhekuulustelija</title>
+    <!--
+    ===========================================================================
+    VERSIOHISTORIA (VERSION HISTORY)
+    ===========================================================================
+    Versio: 2026-11-03 08:22
+    Muutokset:
+      - Lisätty versiohistoria koodikommentteihin ja versionumero käyttöliittymään.
+      - Lisätty kysyttävän suomenkielisen sanan automaattinen äänentoisto (TTS fi-FI)
+        sekä yläpalkin kytkin (Suomi-ääni: Päällä/Pois).
+      - Lisätty äänentoiston automaattinen katkaisu, kun mikrofoni käynnistetään.
+      - Lisätty tekstikenttä kirjoittamalla vastaamista varten (Enter = Tarkista / Seuraava).
+      - Lisätty salliva tarkistuslogiikka (Fuzzy matching: kh/k, ph/p, th/t, ch/j jne.).
+      - Lisätty "Hyväksy vastaukseni (Oikein)" -painike (Override / Itsearviointi).
+
+    Versio: 2026-11-02 (Korjausversio)
+      - Palautettu monipuolinen tumma käyttöliittymä kategorioilla ja tilastoilla.
+      - Vaihdettu rikkinäinen Windowsin/selaimen oma thain äänisynteesi luotettavaan
+        Google Translate TTS -äänimoottoriin (varajärjestelmällä).
+
+    Versio: 2026-11-01 (Alkuperäinen versio)
+      - Ensimmäinen prototyyppi: Chrome webkitSpeechRecognition (th-TH),
+        kategoriat, kohteliaisuuspäätteet (khrap/kha) ja omat sanat (localStorage).
+    ===========================================================================
+    -->
+    <style>
+        :root {
+            --bg-main: #0f1420;
+            --bg-card: #182032;
+            --bg-pill: #232d45;
+            --border-color: #2c3854;
+            --text-main: #f1f5f9;
+            --text-muted: #94a3b8;
+            --accent-amber: #f59e0b;
+            --accent-red: #ef4444;
+            --accent-green: #10b981;
+            --accent-blue: #38bdf8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--bg-main);
+            color: var(--text-main);
+            padding: 16px;
+            line-height: 1.5;
+        }
+
+        .container {
+            max-width: 820px;
+            margin: 0 auto;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        .panel {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 18px 22px;
+        }
+
+        /* Header */
+        .header-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+
+        .title-group h1 {
+            font-size: 22px;
+            font-weight: 700;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .title-group h1 span.th-badge {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        .subtitle {
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+
+        .status-badges {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+
+        .badge {
+            font-size: 12px;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-weight: 600;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .badge-green {
+            background-color: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .badge-purple {
+            background-color: rgba(139, 92, 246, 0.15);
+            color: #c4b5fd;
+            border: 1px solid rgba(139, 92, 246, 0.35);
+        }
+
+        /* Categories & Settings */
+        .categories-row {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 14px;
+        }
+
+        .pill-btn {
+            background-color: var(--bg-pill);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 7px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+
+        .pill-btn:hover {
+            border-color: var(--text-muted);
+        }
+
+        .pill-btn.active {
+            background-color: var(--accent-amber);
+            color: #0f1420;
+            border-color: var(--accent-amber);
+        }
+
+        .settings-row {
+            display: flex;
+            justify-content: flex-end;
+            gap: 8px;
+            flex-wrap: wrap;
+            border-top: 1px solid var(--border-color);
+            padding-top: 12px;
+        }
+
+        .setting-btn {
+            background-color: var(--bg-pill);
+            color: var(--text-muted);
+            border: 1px solid var(--border-color);
+            padding: 6px 12px;
+            border-radius: 10px;
+            font-size: 13px;
+            cursor: pointer;
+        }
+
+        .setting-btn strong {
+            color: var(--accent-amber);
+        }
+
+        .setting-btn.blue-val strong {
+            color: var(--accent-blue);
+        }
+
+        .setting-btn.add-word-btn {
+            background-color: rgba(245, 158, 11, 0.12);
+            color: var(--accent-amber);
+            border-color: rgba(245, 158, 11, 0.4);
+            font-weight: 600;
+        }
+
+        /* Main Quiz Card */
+        .quiz-top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 24px;
+        }
+
+        .quiz-top-left {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .cat-tag {
+            background-color: var(--bg-pill);
+            color: var(--text-main);
+            padding: 4px 10px;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 12px;
+        }
+
+        .quiz-top-right {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+
+        .stat-correct {
+            color: var(--accent-green);
+            font-weight: 700;
+        }
+
+        .link-btn {
+            background: none;
+            border: none;
+            color: var(--text-muted);
+            text-decoration: underline;
+            cursor: pointer;
+            font-size: 13px;
+        }
+
+        /* Question Display */
+        .question-area {
+            text-align: center;
+            margin: 10px 0 24px 0;
+        }
+
+        .prompt-label {
+            font-size: 12px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+        }
+
+        .question-title-wrap {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 12px;
+        }
+
+        .question-main {
+            font-size: 36px;
+            font-weight: 800;
+            line-height: 1.2;
+            color: #ffffff;
+        }
+
+        .replay-fi-btn {
+            background-color: var(--bg-pill);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            border-radius: 50%;
+            width: 36px;
+            height: 36px;
+            cursor: pointer;
+            font-size: 16px;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .question-hint {
+            font-size: 15px;
+            font-style: italic;
+            color: var(--accent-blue);
+            margin-top: 8px;
+        }
+
+        /* Action Controls (Speak + Type) */
+        .action-buttons {
+            display: flex;
+            justify-content: center;
+            gap: 12px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+
+        .btn-speak {
+            background-color: var(--accent-red);
+            color: white;
+            border: none;
+            padding: 14px 26px;
+            border-radius: 12px;
+            font-size: 16px;
+            font-weight: 700;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 10px;
+            transition: transform 0.1s, background-color 0.15s;
+        }
+
+        .btn-speak:hover {
+            background-color: #dc2626;
+        }
+
+        .btn-speak.listening {
+            background-color: var(--accent-amber);
+            color: #000;
+            animation: pulse 1.2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.6); }
+            70% { box-shadow: 0 0 0 12px rgba(245, 158, 11, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(245, 158, 11, 0); }
+        }
+
+        .btn-secondary {
+            background-color: var(--bg-pill);
+            color: var(--text-main);
+            border: 1px solid var(--border-color);
+            padding: 14px 20px;
+            border-radius: 12px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-secondary:hover {
+            border-color: var(--text-muted);
+        }
+
+        /* Text Input Area */
+        .text-input-row {
+            display: flex;
+            max-width: 520px;
+            margin: 0 auto 12px auto;
+            gap: 8px;
+        }
+
+        .text-input {
+            flex: 1;
+            background-color: var(--bg-main);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 12px 16px;
+            border-radius: 10px;
+            font-size: 16px;
+            outline: none;
+        }
+
+        .text-input:focus {
+            border-color: var(--accent-amber);
+        }
+
+        .btn-check {
+            background-color: var(--accent-blue);
+            color: #0f1420;
+            border: none;
+            padding: 0 20px;
+            border-radius: 10px;
+            font-weight: 700;
+            font-size: 15px;
+            cursor: pointer;
+        }
+
+        .status-line {
+            text-align: center;
+            font-size: 14px;
+            color: var(--text-muted);
+            min-height: 22px;
+            margin-bottom: 10px;
+        }
+
+        /* Result & Visual Transcription Box */
+        .result-box {
+            background-color: var(--bg-main);
+            border: 2px solid var(--border-color);
+            border-radius: 14px;
+            padding: 20px;
+            text-align: center;
+            margin-top: 14px;
+            display: none;
+        }
+
+        .result-box.correct {
+            border-color: var(--accent-green);
+            background-color: rgba(16, 185, 129, 0.06);
+        }
+
+        .result-box.wrong {
+            border-color: var(--accent-amber);
+            background-color: rgba(245, 158, 11, 0.06);
+        }
+
+        .feedback-banner {
+            font-size: 15px;
+            font-weight: 700;
+            margin-bottom: 10px;
+        }
+
+        .romanized-big {
+            font-size: 38px;
+            font-weight: 800;
+            color: var(--accent-amber);
+            letter-spacing: 0.5px;
+            margin: 6px 0;
+        }
+
+        .thai-script {
+            font-size: 28px;
+            color: var(--text-main);
+            margin-bottom: 6px;
+        }
+
+        .pronounce-guide {
+            font-size: 14px;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+
+        .result-actions {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            flex-wrap: wrap;
+            margin-top: 12px;
+        }
+
+        .btn-override {
+            background-color: rgba(16, 185, 129, 0.18);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.5);
+            padding: 10px 18px;
+            border-radius: 10px;
+            font-size: 14px;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .btn-override:hover {
+            background-color: rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-next {
+            background-color: var(--accent-green);
+            color: #0f1420;
+            border: none;
+            padding: 10px 24px;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        /* Modal for adding custom words */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.75);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            z-index: 50;
+        }
+
+        .modal {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            max-width: 440px;
+            width: 100%;
+            padding: 22px;
+        }
+
+        .modal h3 {
+            margin-bottom: 14px;
+        }
+
+        .form-group {
+            margin-bottom: 12px;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 13px;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .form-group input {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+            background-color: var(--bg-main);
+            color: var(--text-main);
+        }
+
+        .footer-info {
+            text-align: center;
+            font-size: 12px;
+            color: var(--text-muted);
+            margin-top: 6px;
+        }
+
+        @media (max-width: 600px) {
+            .question-main { font-size: 26px; }
+            .romanized-big { font-size: 28px; }
+        }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <!-- YLÄPALKIN OTSIKKO -->
+    <div class="panel">
+        <div class="header-row">
+            <div class="title-group">
+                <h1><span class="th-badge">TH</span> Thai-puhekuulustelija</h1>
+                <div class="subtitle">Puhu thaiksi tai kirjoita • Näe litterointi isolla • Kuule oikea ääntämys</div>
+            </div>
+            <div class="status-badges">
+                <span class="badge badge-green" id="micBadge">● Mikrofoni: Thai (th-TH)</span>
+                <span class="badge badge-purple">● Ääni: Google / Selaimen TTS</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- KATEGORIAT JA ASETUKSET -->
+    <div class="panel">
+        <div class="categories-row" id="categoriesContainer"></div>
+        <div class="settings-row">
+            <button class="setting-btn" onclick="toggleFiAudio()">
+                Suomi-ääni: <strong id="fiAudioLabel">Päällä</strong>
+            </button>
+            <button class="setting-btn" onclick="togglePolite()">
+                Kohteliaisuus: <strong id="politeLabel">khrap (mies)</strong>
+            </button>
+            <button class="setting-btn blue-val" onclick="toggleSpeed()">
+                Nopeus: <strong id="speedLabel">0.85x (Selkeä)</strong>
+            </button>
+            <button class="setting-btn add-word-btn" onclick="openModal()">
+                + Omat sanat
+            </button>
+        </div>
+    </div>
+
+    <!-- VARSINAINEN KUULUSTELUKORTTI -->
+    <div class="panel">
+        <div class="quiz-top-bar">
+            <div class="quiz-top-left">
+                <span class="cat-tag" id="currentCatTag">Perusteet</span>
+                <span id="progressText">Sana 1 / 8</span>
+            </div>
+            <div class="quiz-top-right">
+                <span class="stat-correct">Oikein: <span id="correctCount">0</span></span>
+                <span>Harjoiteltu: <span id="totalCount">0</span></span>
+                <button class="link-btn" onclick="shuffleWords()">Sekoita</button>
+            </div>
+        </div>
+
+        <div class="question-area">
+            <div class="prompt-label">MITEN SANOTAAN THAIKSI:</div>
+            <div class="question-title-wrap">
+                <div class="question-main" id="questionText">Ladataan...</div>
+                <button class="replay-fi-btn" onclick="speakFinnishQuestion()" title="Kuuntele kysymys suomeksi">🔊</button>
+            </div>
+            <div class="question-hint" id="questionHint"></div>
+        </div>
+
+        <!-- PUHE- JA NÄYTÄ-PAINIKKEET -->
+        <div class="action-buttons">
+            <button class="btn-speak" id="micBtn" onclick="toggleListening()">
+                🎙️ Puhu vastaus thaiksi
+            </button>
+            <button class="btn-secondary" onclick="revealAnswer()">
+                👁️ Näytä & kuuntele
+            </button>
+        </div>
+
+        <!-- KIRJOITUSKENTTÄ -->
+        <div class="text-input-row">
+            <input type="text" id="textAnswerInput" class="text-input" 
+                   placeholder="Tai kirjoita vastaus (esim. khop khun) ja paina Enter..." 
+                   autocomplete="off" />
+            <button class="btn-check" onclick="submitTypedAnswer()">Tarkista</button>
+        </div>
+
+        <div class="status-line" id="statusLine">Voit vastata puhumalla tai kirjoittamalla.</div>
+
+        <!-- VASTAUSLAATIKKO -->
+        <div class="result-box" id="resultBox">
+            <div class="feedback-banner" id="feedbackBanner"></div>
+            <div class="romanized-big" id="romanizedText"></div>
+            <div class="thai-script" id="thaiScriptText"></div>
+            <div class="pronounce-guide" id="pronounceGuide"></div>
+
+            <div class="result-actions">
+                <button class="btn-secondary" onclick="playThaiAudio(false)">🔊 Kuuntele uudelleen</button>
+                <button class="btn-secondary" onclick="playThaiAudio(true)">🐢 Hitaasti</button>
+                <button class="btn-override" id="overrideBtn" onclick="overrideAsCorrect()">
+                    ✅ Hyväksy vastaukseni (Oikein)
+                </button>
+                <button class="btn-next" onclick="nextWord()">Seuraava sana ➡️ (Enter)</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="footer-info">
+        Versio: <strong>2026-11-03 08:22</strong> • Vinkki: Paina <strong>Enter</strong> tarkistaaksesi tai siirtyäksesi seuraavaan sanaan, tai <strong>+</strong> hyväksyäksesi vastauksen oikeaksi.
+    </div>
+</div>
+
+<!-- OMAT SANAT -IKKUNA -->
+<div class="modal-backdrop" id="wordModal">
+    <div class="modal">
+        <h3>Lisää oma sana tai fraasi</h3>
+        <div class="form-group">
+            <label>Sana suomeksi (esim. Kana / Ei tulista)</label>
+            <input type="text" id="customFi" placeholder="Suomeksi..." />
+        </div>
+        <div class="form-group">
+            <label>Litterointi eli kirjoitusasu (esim. gai / mai phet)</label>
+            <input type="text" id="customRom" placeholder="Litterointi..." />
+        </div>
+        <div class="form-group">
+            <label>Thaiksi (valinnainen, esim. ไก่)</label>
+            <input type="text" id="customTh" placeholder="Thain merkeillä (jos tiedossa)..." />
+        </div>
+        <div class="form-group">
+            <label>Vinkki / Ääntämisohje (valinnainen)</label>
+            <input type="text" id="customHint" placeholder="Muistisääntö..." />
+        </div>
+        <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
+            <button class="btn-secondary" onclick="closeModal()">Peruuta</button>
+            <button class="btn-next" onclick="saveCustomWord()">Tallenna sana</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // =========================================================================
+    // PERUSSANASTO (Jaettuna kategorioihin)
+    // =========================================================================
+    const defaultWords = [
+        // Perusteet (8)
+        { cat: "Perusteet", fi: "Hei / Päivää", hint: "Yleistervehdys", th: "สวัสดี", rom: "sawasdee", alts: ["sawatdee", "sawadee", "savatdii", "savadii"], guide: "Lausutaan: sa-wat-dii" },
+        { cat: "Perusteet", fi: "Kiitos", hint: "Kun kiität palvelusta tai avusta", th: "ขอบคุณ", rom: "khop khun", alts: ["kop kun", "khob khun", "kap kun", "kob kun"], guide: "Lausutaan: khoop-khun (selkeä o)" },
+        { cat: "Perusteet", fi: "Kyllä", hint: "Myöntävä vastaus (on / pitää paikkansa)", th: "ใช่", rom: "chai", alts: ["jai", "sai", "tshai"], guide: "Lausutaan: tšai (laskeva tooni)" },
+        { cat: "Perusteet", fi: "Ei", hint: "Yleinen kieltosana", th: "ไม่", rom: "mai", alts: ["mai chai"], guide: "Lausutaan: mai (tai 'mai chai' = ei ole)" },
+        { cat: "Perusteet", fi: "Onnistuu / Käy (Voida)", hint: "Kun jokin asia sopii tai on mahdollista", th: "ได้", rom: "dai", alts: ["daai"], guide: "Lausutaan: dai" },
+        { cat: "Perusteet", fi: "Anteeksi (Pahoittelu / Huomion pyytäminen)", hint: "Kun pahoittelet tai pyydät tietä / tarjoilijan huomiota", th: "ขอโทษ", rom: "kho thot", alts: ["ko tot", "kho tot", "khor thot"], guide: "Lausutaan: khoo-thoot" },
+        { cat: "Perusteet", fi: "Ei se mitään / Ole hyvä", hint: "Vastaus kiitokseen tai pahoitteluun", th: "ไม่เป็นไร", rom: "mai pen rai", alts: ["mai ben rai", "maipenrai"], guide: "Lausutaan: mai-pen-rai" },
+        { cat: "Perusteet", fi: "En ymmärrä", hint: "Kun et ymmärrä, mitä toinen sanoo", th: "ไม่เข้าใจ", rom: "mai khao jai", alts: ["mai kao jai", "mai kao chai"], guide: "Lausutaan: mai-khao-tšai" },
+
+        // Hinnat & Numerot (11)
+        { cat: "Hinnat & Numerot", fi: "Kuinka paljon maksaa?", hint: "Hintaa kysyttäessä", th: "เท่าไหร่", rom: "thao-rai", alts: ["taorai", "thao rai", "tao rai"], guide: "Lausutaan: thao-rai" },
+        { cat: "Hinnat & Numerot", fi: "Liian kallis", hint: "Tinkaamisessa", th: "แพงไป", rom: "phaeng pai", alts: ["peng pai", "paeng pai", "phaeng"], guide: "Lausutaan: phääng-pai" },
+        { cat: "Hinnat & Numerot", fi: "Alennus (Voitko alentaa hintaa?)", hint: "Tinkaamisessa: 'lot dai mai'", th: "ลดได้ไหม", rom: "lot dai mai", alts: ["lod dai mai", "lot daimai"], guide: "Lausutaan: lot-dai-mai" },
+        { cat: "Hinnat & Numerot", fi: "Yksi (1)", hint: "Lukusana 1", th: "หนึ่ง", rom: "nueng", alts: ["nung", "neung"], guide: "Lausutaan: nüng" },
+        { cat: "Hinnat & Numerot", fi: "Kaksi (2)", hint: "Lukusana 2", th: "สอง", rom: "song", alts: ["soong"], guide: "Lausutaan: soong (nouseva)" },
+        { cat: "Hinnat & Numerot", fi: "Kolme (3)", hint: "Lukusana 3", th: "สาม", rom: "sam", alts: ["saam"], guide: "Lausutaan: saam" },
+        { cat: "Hinnat & Numerot", fi: "Neljä (4)", hint: "Lukusana 4", th: "สี่", rom: "see", alts: ["sii", "si"], guide: "Lausutaan: sii" },
+        { cat: "Hinnat & Numerot", fi: "Viisi (5)", hint: "Lukusana 5", th: "ห้า", rom: "haa", alts: ["ha"], guide: "Lausutaan: haa (laskeva)" },
+        { cat: "Hinnat & Numerot", fi: "Kymmenen (10)", hint: "Lukusana 10", th: "สิบ", rom: "sip", alts: ["sib"], guide: "Lausutaan: sip" },
+        { cat: "Hinnat & Numerot", fi: "Kaksikymmentä (20)", hint: "Lukusana 20", th: "ยี่สิบ", rom: "yee sip", alts: ["yii sip", "yisip"], guide: "Lausutaan: jii-sip" },
+        { cat: "Hinnat & Numerot", fi: "Sata (100)", hint: "Lukusana 100", th: "หนึ่งร้อย", rom: "nueng roi", alts: ["roi", "nung roi"], guide: "Lausutaan: nüng-rooi" },
+
+        // Ravintola & Ruoka (8)
+        { cat: "Ravintola & Ruoka", fi: "Vesi", hint: "Juomavesi", th: "น้ำ", rom: "nam", alts: ["naam", "nam plao"], guide: "Lausutaan: naam" },
+        { cat: "Ravintola & Ruoka", fi: "Kana", hint: "Ruoka-aine", th: "ไก่", rom: "gai", alts: ["kai"], guide: "Lausutaan: gai (pehmeä k/g)" },
+        { cat: "Ravintola & Ruoka", fi: "Ei tulista", hint: "Kun tilaat ruokaa", th: "ไม่เผ็ด", rom: "mai phet", alts: ["mai pet", "maiphet"], guide: "Lausutaan: mai-phet" },
+        { cat: "Ravintola & Ruoka", fi: "Herkullista / Hyvää", hint: "Ruoan kehuminen", th: "อร่อย", rom: "aroi", alts: ["aroy"], guide: "Lausutaan: a-roi" },
+        { cat: "Ravintola & Ruoka", fi: "Lasku, kiitos", hint: "Ravintolassa maksettaessa", th: "เช็คบิล", rom: "chek bin", alts: ["check bin", "kep tang"], guide: "Lausutaan: tšek-bin" },
+        { cat: "Ravintola & Ruoka", fi: "Kahvi", hint: "Juoma", th: "กาแฟ", rom: "kafae", alts: ["gafae", "kafe", "gafe"], guide: "Lausutaan: gaa-fää" },
+        { cat: "Ravintola & Ruoka", fi: "Olut", hint: "Juoma", th: "เบียร์", rom: "bia", alts: ["beer"], guide: "Lausutaan: bia" },
+        { cat: "Ravintola & Ruoka", fi: "Riisi", hint: "Peruslisuke", th: "ข้าว", rom: "khao", alts: ["kao", "khaw"], guide: "Lausutaan: khaao" },
+
+        // Liikkuminen (6)
+        { cat: "Liikkuminen", fi: "Missä on...?", hint: "Lisää paikka eteen, esim. 'Hong nam yuu thii nai'", th: "อยู่ที่ไหน", rom: "yuu thii nai", alts: ["yu ti nai", "yuu tii nai", "thii nai"], guide: "Lausutaan: juu-thii-nai" },
+        { cat: "Liikkuminen", fi: "WC / Vessa", hint: "Kirjaimellisesti vesihuone", th: "ห้องน้ำ", rom: "hong nam", alts: ["hong naam", "hongnam"], guide: "Lausutaan: hong-naam" },
+        { cat: "Liikkuminen", fi: "Suoraan eteenpäin", hint: "Takseille ja suunnissa", th: "ตรงไป", rom: "trong pai", alts: ["tong pai", "trongpai"], guide: "Lausutaan: trong-pai" },
+        { cat: "Liikkuminen", fi: "Käänny vasemmalle", hint: "Suuntaohje", th: "เลี้ยวซ้าย", rom: "liao sai", alts: ["leow sai", "liao saai"], guide: "Lausutaan: liao-saai" },
+        { cat: "Liikkuminen", fi: "Käänny oikealle", hint: "Suuntaohje", th: "เลี้ยวขวา", rom: "liao khwaa", alts: ["liao kwa", "leow khwa"], guide: "Lausutaan: liao-khwaa" },
+        { cat: "Liikkuminen", fi: "Pysähdy tässä", hint: "Taksille tai lavataksille", th: "จอดที่นี่", rom: "jot thii nii", alts: ["chot thii nii", "jod ti ni", "yut"], guide: "Lausutaan: tšot-thii-nii" }
+    ];
+
+    // Tila- ja asetusmuuttujat
+    let customWords = JSON.parse(localStorage.getItem('thai_custom_words') || '[]');
+    let currentCategory = "Perusteet";
+    let activeList = [];
+    let currentIndex = 0;
+
+    let politeMode = "khrap"; // "khrap" | "kha" | "none"
+    let audioSpeed = 0.85;
+    let fiAudioEnabled = true;
+    let userHasInteracted = false;
+
+    let correctCount = 0;
+    let totalCount = 0;
+    let answerRevealed = false;
+    let currentRoundCorrect = false;
+
+    let recognition = null;
+    let isListening = false;
+    let currentAudioObj = null;
+
+    // =========================================================================
+    // PUHEENTUNNISTUKSEN ALUSTUS (Chrome th-TH)
+    // =========================================================================
+    const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+    if (SpeechRec) {
+        recognition = new SpeechRec();
+        recognition.lang = 'th-TH';
+        recognition.continuous = false;
+        recognition.interimResults = false;
+
+        recognition.onstart = () => {
+            isListening = true;
+            const btn = document.getElementById('micBtn');
+            btn.classList.add('listening');
+            btn.innerText = "🛑 Kuunnellaan thaita...";
+            document.getElementById('statusLine').innerText = "Puhu nyt thainkielinen sana mikrofoniin...";
+        };
+
+        recognition.onresult = (event) => {
+            const transcript = event.results[0][0].transcript.trim();
+            evaluateAnswer(transcript, true);
+        };
+
+        recognition.onerror = (event) => {
+            document.getElementById('statusLine').innerText = "Mikrofoni ei kuullut selkeästi (" + event.error + "). Yritä uudelleen tai kirjoita vastaus.";
+        };
+
+        recognition.onend = () => {
+            isListening = false;
+            const btn = document.getElementById('micBtn');
+            btn.classList.remove('listening');
+            btn.innerText = "🎙️ Puhu vastaus thaiksi";
+        };
+    } else {
+        document.getElementById('micBadge').innerText = "⚠️ Selain ei tue puheentunnistusta";
+    }
+
+    // =========================================================================
+    // ÄÄNIMOOTTORI: SUOMI (Kysymys) & THAI (Vastaus) + Katkaisutoiminto
+    // =========================================================================
+    function stopAllAudio() {
+        if ('speechSynthesis' in window) {
+            window.speechSynthesis.cancel();
+        }
+        if (currentAudioObj) {
+            currentAudioObj.pause();
+            currentAudioObj.currentTime = 0;
+            currentAudioObj = null;
+        }
+    }
+
+    // Lukee kysyttävän suomenkielisen sanan ääneen (poistaa sulkeissa olevat lisäohjeet)
+    function speakFinnishQuestion(force = false) {
+        if (!fiAudioEnabled && !force) return;
+        if (!userHasInteracted && !force) return; // Estää selaimen autoplay-virheen 1. latauksella
+        if (isListening) return;
+
+        stopAllAudio();
+        const word = activeList[currentIndex];
+        if (!word) return;
+
+        // Poistetaan sulkeet, esim. "Anteeksi (Pahoittelu)" -> "Anteeksi"
+        const cleanFi = word.fi.replace(/\s*\(.*?\)\s*/g, '').trim();
+
+        if ('speechSynthesis' in window) {
+            const utter = new SpeechSynthesisUtterance(cleanFi);
+            utter.lang = 'fi-FI';
+            utter.rate = 1.0;
+            window.speechSynthesis.speak(utter);
+        }
+    }
+
+    // Toistaa thainkielisen vastauksen (Google TTS + varajärjestelmä)
+    function playThaiAudio(slow = false) {
+        userHasInteracted = true;
+        stopAllAudio();
+
+        const word = activeList[currentIndex];
+        if (!word) return;
+
+        let thaiToSpeak = word.th;
+        if (politeMode === "khrap") thaiToSpeak += " ครับ";
+        else if (politeMode === "kha") thaiToSpeak += " ค่ะ";
+
+        const rate = slow ? 0.55 : audioSpeed;
+        const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=th&q=${encodeURIComponent(thaiToSpeak)}`;
+
+        const audio = new Audio(url);
+        audio.playbackRate = rate;
+        currentAudioObj = audio;
+
+        audio.play().catch(() => {
+            // Varajärjestelmä: selaimen oma th-TH synteesi
+            if ('speechSynthesis' in window) {
+                const u = new SpeechSynthesisUtterance(thaiToSpeak);
+                u.lang = 'th-TH';
+                u.rate = rate;
+                window.speechSynthesis.speak(u);
+            }
+        });
+    }
+
+    // =========================================================================
+    // NORMALISOINTI JA SALLIVA TARKISTUS (FUZZY MATCHING)
+    // =========================================================================
+    function normalizeRomanized(str) {
+        return (str || "")
+            .toLowerCase()
+            .replace(/\b(khrap|krap|kap|kha|ka)\b/g, '') // Poistetaan kohteliaisuuspäätteet vertailusta
+            .replace(/[-_.,?!]/g, ' ')
+            .replace(/kh/g, 'k')
+            .replace(/ph/g, 'p')
+            .replace(/th/g, 't')
+            .replace(/ch/g, 'j')
+            .replace(/aa/g, 'a')
+            .replace(/ee/g, 'i')
+            .replace(/ii/g, 'i')
+            .replace(/oo/g, 'o')
+            .replace(/uu/g, 'u')
+            .replace(/\s+/g, '')
+            .trim();
+    }
+
+    function normalizeThaiScript(str) {
+        return (str || "")
+            .replace(/(ครับ|ค่ะ|คะ|\s+)/g, '')
+            .trim();
+    }
+
+    function checkMatch(userInput, wordObj) {
+        const raw = userInput.trim();
+        if (!raw) return false;
+
+        // 1. Tarkistetaan thain merkeillä (jos puheentunnistus palautti thaita)
+        const cleanUserThai = normalizeThaiScript(raw);
+        const cleanTargetThai = normalizeThaiScript(wordObj.th);
+        if (cleanUserThai && cleanTargetThai && (cleanUserThai.includes(cleanTargetThai) || cleanTargetThai.includes(cleanUserThai))) {
+            return true;
+        }
+
+        // 2. Tarkistetaan latinalaisilla aakkosilla (Fuzzy)
+        const normUser = normalizeRomanized(raw);
+        const candidates = [wordObj.rom, ...(wordObj.alts || [])];
+        for (let c of candidates) {
+            if (normalizeRomanized(c) === normUser) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    // =========================================================================
+    // KYSYMYKSEN NÄYTTÖ JA VASTAUKSEN KÄSITTELY
+    // =========================================================================
+    function buildCategories() {
+        const allWords = [...defaultWords, ...customWords];
+        const categories = [
+            { name: "Kaikki", count: allWords.length },
+            { name: "Perusteet", count: defaultWords.filter(w => w.cat === "Perusteet").length },
+            { name: "Hinnat & Numerot", count: defaultWords.filter(w => w.cat === "Hinnat & Numerot").length },
+            { name: "Ravintola & Ruoka", count: defaultWords.filter(w => w.cat === "Ravintola & Ruoka").length },
+            { name: "Liikkuminen", count: defaultWords.filter(w => w.cat === "Liikkuminen").length },
+            { name: "Omat sanat", count: customWords.length }
+        ];
+
+        const container = document.getElementById('categoriesContainer');
+        container.innerHTML = '';
+
+        categories.forEach(c => {
+            const btn = document.createElement('button');
+            btn.className = 'pill-btn' + (c.name === currentCategory ? ' active' : '');
+            btn.innerText = `${c.name} (${c.count})`;
+            btn.onclick = () => selectCategory(c.name);
+            container.appendChild(btn);
+        });
+    }
+
+    function selectCategory(catName) {
+        userHasInteracted = true;
+        currentCategory = catName;
+        const allWords = [...defaultWords, ...customWords];
+
+        if (catName === "Kaikki") {
+            activeList = [...allWords];
+        } else if (catName === "Omat sanat") {
+            activeList = [...customWords];
+        } else {
+            activeList = defaultWords.filter(w => w.cat === catName);
+        }
+
+        if (activeList.length === 0) {
+            alert("Tässä kategoriassa ei ole vielä sanoja. Lisää ensin omia sanoja!");
+            selectCategory("Perusteet");
+            return;
+        }
+
+        currentIndex = 0;
+        buildCategories();
+        renderCurrentWord();
+    }
+
+    function renderCurrentWord() {
+        answerRevealed = false;
+        currentRoundCorrect = false;
+        const word = activeList[currentIndex];
+
+        document.getElementById('currentCatTag').innerText = word.cat || "Omat sanat";
+        document.getElementById('progressText').innerText = `Sana ${currentIndex + 1} / ${activeList.length}`;
+        document.getElementById('questionText').innerText = word.fi;
+        document.getElementById('questionHint').innerText = word.hint || "";
+
+        const inputEl = document.getElementById('textAnswerInput');
+        inputEl.value = "";
+        document.getElementById('resultBox').style.display = "none";
+        document.getElementById('statusLine').innerText = "Puhu vastaus mikrofoniin tai kirjoita se kenttään.";
+
+        speakFinnishQuestion();
+    }
+
+    function toggleListening() {
+        userHasInteracted = true;
+        // Katkaistaan suomenkielinen kysymysääni välittömästi, jotta mikki ei kuule sitä!
+        stopAllAudio();
+
+        if (!recognition) {
+            alert("Selaimesi ei tue puheentunnistusta. Käytä Chromea tai kirjoita vastaus.");
+            return;
+        }
+        if (isListening) {
+            recognition.stop();
+        } else {
+            recognition.start();
+        }
+    }
+
+    function submitTypedAnswer() {
+        userHasInteracted = true;
+        const val = document.getElementById('textAnswerInput').value.trim();
+        if (!val) return;
+        evaluateAnswer(val, false);
+    }
+
+    function evaluateAnswer(userResponse, wasSpoken) {
+        const word = activeList[currentIndex];
+        const isCorrect = checkMatch(userResponse, word);
+
+        if (!answerRevealed) {
+            totalCount++;
+            if (isCorrect) {
+                correctCount++;
+                currentRoundCorrect = true;
+            }
+            updateStats();
+        }
+
+        showResultBox(word, isCorrect, userResponse, wasSpoken);
+    }
+
+    function revealAnswer() {
+        userHasInteracted = true;
+        const word = activeList[currentIndex];
+        if (!answerRevealed) {
+            totalCount++;
+            updateStats();
+        }
+        showResultBox(word, false, null, false);
+    }
+
+    function showResultBox(word, isCorrect, userResponse, wasSpoken) {
+        answerRevealed = true;
+        const box = document.getElementById('resultBox');
+        const banner = document.getElementById('feedbackBanner');
+        const overrideBtn = document.getElementById('overrideBtn');
+
+        box.style.display = "block";
+        box.className = "result-box " + (isCorrect ? "correct" : "wrong");
+
+        let suffixRom = politeMode !== "none" ? ` (${politeMode})` : "";
+        let suffixTh = politeMode === "khrap" ? " (ครับ)" : (politeMode === "kha" ? " (ค่ะ)" : "");
+
+        document.getElementById('romanizedText').innerText = word.rom + suffixRom;
+        document.getElementById('thaiScriptText').innerText = (word.th || "") + suffixTh;
+        document.getElementById('pronounceGuide').innerText = word.guide || "";
+
+        if (isCorrect) {
+            banner.style.color = "#34d399";
+            banner.innerText = `✅ Oikein! (${wasSpoken ? "Kuultu" : "Kirjoitit"}: "${userResponse}")`;
+            overrideBtn.style.display = "none";
+        } else if (userResponse) {
+            banner.style.color = "#f59e0b";
+            banner.innerText = `⚠️ Tarkista! ${wasSpoken ? "Mikrofoni kuuli" : "Kirjoitit"}: "${userResponse}"`;
+            overrideBtn.style.display = "inline-block";
+        } else {
+            banner.style.color = "#38bdf8";
+            banner.innerText = "👁️ Oikea vastaus:";
+            overrideBtn.style.display = "inline-block";
+        }
+
+        playThaiAudio(false);
+    }
+
+    // OMA HYVÄKSYNTÄ (OVERRIDE)
+    function overrideAsCorrect() {
+        if (!answerRevealed || currentRoundCorrect) return;
+        currentRoundCorrect = true;
+        correctCount++;
+        updateStats();
+
+        const box = document.getElementById('resultBox');
+        const banner = document.getElementById('feedbackBanner');
+        box.className = "result-box correct";
+        banner.style.color = "#34d399";
+        banner.innerText = "✅ Hyväksytty oikeaksi!";
+        document.getElementById('overrideBtn').style.display = "none";
+    }
+
+    function nextWord() {
+        userHasInteracted = true;
+        currentIndex = (currentIndex + 1) % activeList.length;
+        renderCurrentWord();
+    }
+
+    function shuffleWords() {
+        userHasInteracted = true;
+        activeList.sort(() => Math.random() - 0.5);
+        currentIndex = 0;
+        renderCurrentWord();
+    }
+
+    function updateStats() {
+        document.getElementById('correctCount').innerText = correctCount;
+        document.getElementById('totalCount').innerText = totalCount;
+    }
+
+    // =========================================================================
+    // ASETUSTEN KYTKIMET & OMAT SANAT
+    // =========================================================================
+    function toggleFiAudio() {
+        userHasInteracted = true;
+        fiAudioEnabled = !fiAudioEnabled;
+        document.getElementById('fiAudioLabel').innerText = fiAudioEnabled ? "Päällä" : "Pois";
+        if (fiAudioEnabled) speakFinnishQuestion(true);
+        else stopAllAudio();
+    }
+
+    function togglePolite() {
+        userHasInteracted = true;
+        if (politeMode === "khrap") {
+            politeMode = "kha";
+            document.getElementById('politeLabel').innerText = "kha (nainen)";
+        } else if (politeMode === "kha") {
+            politeMode = "none";
+            document.getElementById('politeLabel').innerText = "Ei päätettä";
+        } else {
+            politeMode = "khrap";
+            document.getElementById('politeLabel').innerText = "khrap (mies)";
+        }
+    }
+
+    function toggleSpeed() {
+        userHasInteracted = true;
+        if (audioSpeed === 0.85) {
+            audioSpeed = 1.0;
+            document.getElementById('speedLabel').innerText = "1.0x (Normaali)";
+        } else if (audioSpeed === 1.0) {
+            audioSpeed = 0.65;
+            document.getElementById('speedLabel').innerText = "0.65x (Hidas)";
+        } else {
+            audioSpeed = 0.85;
+            document.getElementById('speedLabel').innerText = "0.85x (Selkeä)";
+        }
+    }
+
+    function openModal() {
+        document.getElementById('wordModal').style.display = 'flex';
+    }
+
+    function closeModal() {
+        document.getElementById('wordModal').style.display = 'none';
+    }
+
+    function saveCustomWord() {
+        const fi = document.getElementById('customFi').value.trim();
+        const rom = document.getElementById('customRom').value.trim();
+        const th = document.getElementById('customTh').value.trim() || rom;
+        const hint = document.getElementById('customHint').value.trim();
+
+        if (!fi || !rom) {
+            alert("Täytä vähintään suomenkielinen sana ja litterointi!");
+            return;
+        }
+
+        const newWord = { cat: "Omat sanat", fi, rom, th, hint, alts: [], guide: `Lausutaan: ${rom}` };
+        customWords.push(newWord);
+        localStorage.setItem('thai_custom_words', JSON.stringify(customWords));
+
+        document.getElementById('customFi').value = '';
+        document.getElementById('customRom').value = '';
+        document.getElementById('customTh').value = '';
+        document.getElementById('customHint').value = '';
+        closeModal();
+        buildCategories();
+    }
+
+    // =========================================================================
+    // NÄPPÄIMISTÖN PIKAKOMENNOT (Enter = Tarkista / Seuraava, + = Hyväksy)
+    // =========================================================================
+    document.addEventListener('keydown', (e) => {
+        if (document.getElementById('wordModal').style.display === 'flex') return;
+
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            if (!answerRevealed) {
+                const val = document.getElementById('textAnswerInput').value.trim();
+                if (val) submitTypedAnswer();
+                else revealAnswer();
+            } else {
+                nextWord();
+            }
+        } else if (e.key === '+' && answerRevealed && !currentRoundCorrect) {
+            e.preventDefault();
+            overrideAsCorrect();
+        }
+    });
+
+    // Käynnistys
+    selectCategory("Perusteet");
+</script>
+
+</body>
+</html>
