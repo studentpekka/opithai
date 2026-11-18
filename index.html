@@ -9,30 +9,40 @@
     ===========================================================================
     VERSIOHISTORIA (VERSION HISTORY / CHANGELOG)
     ===========================================================================
+    Versio: 2026-11-18 18:15
+    - Arkkitehtuurimuutos: Sanasto eriytetty lähdekoodista puhtaaksi
+      sanasto.csv-tiedostoksi (198 sanaa ja fraasia, 7 kategoriaa).
+    - Lisätty Service Worker (sw.js) offline-välimuistia varten (Network First,
+      fallback to Cache).
+    - Lisätty "ℹ️ Info" -painike (sekä pikavalinta i-näppäimellä), joka avaa
+      sanan hauskan muistisäännön sekä käytännön käyttövinkin.
+    - Laajennettu sanastoa ravintolafraaseilla, hotelli-, small talk-, suunta-,
+      tunne- ja sääfraaseilla sekä luvuilla 0–100 000.
+
     Versio: 2026-11-03 15:15
-      - Lisätty "Hinnat & Numerot" -kategoriaan pyydetyt numerot: 0, 6–10,
-        sekä luvut 200, 1000, 2000, 100000, 23, 67, 43, 1200, 1500 ja 3592
-        täydellisillä litteroinneilla, thai-merkeillä, vaihtoehdoilla ja lausuntaohjeilla.
+    - Lisätty "Hinnat & Numerot" -kategoriaan pyydetyt numerot: 0, 6–10,
+      sekä luvut 200, 1000, 2000, 100000, 23, 67, 43, 1200, 1500 ja 3592
+      täydellisillä litteroinneilla, thai-merkeillä, vaihtoehdoilla ja lausuntaohjeilla.
 
     Versio: 2026-11-03 13:00
-      - Lisätty takaisin puuttunut "⚙️ Asetukset / Tietoa" -painike ja modaali.
-      - Toteutettu Vaihtoehto 5 (Hybridimoottori äänelle): Ensisijaisena 
-        Google TTS (no-referrer) + varamoottorina selaimen speechSynthesis.
+    - Lisätty takaisin puuttunut "⚙️ Asetukset / Tietoa" -painike ja modaali.
+    - Toteutettu Vaihtoehto 5 (Hybridimoottori äänelle): Ensisijaisena 
+      Google TTS (no-referrer) + varamoottorina selaimen speechSynthesis.
 
     Versio: 2026-11-03 11:22
-      - Korjattu GitHub Pagesin CORS / 403 Forbidden -ääniongelma.
+    - Korjattu GitHub Pagesin CORS / 403 Forbidden -ääniongelma.
 
     Versio: 2026-11-03 08:22
-      - Lisätty kysyttävän suomenkielisen sanan automaattinen äänentoisto (TTS fi-FI)
-        sekä yläpalkin kytkin (Suomi-ääni: Päällä/Pois).
-      - Lisätty tekstikenttä kirjoittamalla vastaamista varten (Enter = Tarkista / Seuraava).
-      - Lisätty salliva tarkistuslogiikka (Fuzzy matching) ja itsearviointi.
+    - Lisätty kysyttävän suomenkielisen sanan automaattinen äänentoisto (TTS fi-FI)
+      sekä yläpalkin kytkin (Suomi-ääni: Päällä/Pois).
+    - Lisätty tekstikenttä kirjoittamalla vastaamista varten (Enter = Tarkista / Seuraava).
+    - Lisätty salliva tarkistuslogiikka (Fuzzy matching) ja itsearviointi.
 
     Versio: 2026-11-02 (Korjausversio)
-      - Tumma käyttöliittymä, kategoriat ja Google Translate TTS.
+    - Tumma käyttöliittymä, kategoriat ja Google Translate TTS.
 
     Versio: 2026-11-01 (Alkuperäinen versio)
-      - Ensimmäinen prototyyppi: Chrome webkitSpeechRecognition (th-TH).
+    - Ensimmäinen prototyyppi: Chrome webkitSpeechRecognition (th-TH).
     ===========================================================================
     -->
     <style>
@@ -133,6 +143,12 @@
             background-color: rgba(139, 92, 246, 0.15);
             color: #c4b5fd;
             border: 1px solid rgba(139, 92, 246, 0.35);
+        }
+
+        .badge-blue {
+            background-color: rgba(56, 189, 248, 0.15);
+            color: #38bdf8;
+            border: 1px solid rgba(56, 189, 248, 0.35);
         }
 
         /* Categories & Settings */
@@ -270,6 +286,7 @@
             align-items: center;
             justify-content: center;
             gap: 12px;
+            flex-wrap: wrap;
         }
 
         .question-main {
@@ -294,11 +311,64 @@
             flex-shrink: 0;
         }
 
+        .word-info-btn {
+            background-color: rgba(56, 189, 248, 0.14);
+            border: 1px solid rgba(56, 189, 248, 0.45);
+            color: var(--accent-blue);
+            border-radius: 20px;
+            padding: 6px 12px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 700;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            flex-shrink: 0;
+            transition: all 0.15s;
+        }
+
+        .word-info-btn:hover {
+            background-color: rgba(56, 189, 248, 0.25);
+        }
+
         .question-hint {
             font-size: 15px;
             font-style: italic;
             color: var(--accent-blue);
             margin-top: 8px;
+        }
+
+        /* Word Info Drawer (Mnemonic & Usage) */
+        .word-info-box {
+            background-color: rgba(56, 189, 248, 0.07);
+            border: 1px solid rgba(56, 189, 248, 0.35);
+            border-radius: 12px;
+            padding: 14px 18px;
+            margin: 0 auto 18px auto;
+            max-width: 640px;
+            text-align: left;
+            display: none;
+            font-size: 14px;
+        }
+
+        .word-info-box .info-row {
+            margin-bottom: 8px;
+        }
+
+        .word-info-box .info-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .word-info-box .info-label {
+            color: var(--accent-amber);
+            font-weight: 700;
+            margin-right: 6px;
+        }
+
+        .word-info-box .usage-label {
+            color: var(--accent-blue);
+            font-weight: 700;
+            margin-right: 6px;
         }
 
         /* Action Controls */
@@ -498,7 +568,7 @@
             background-color: var(--bg-card);
             border: 1px solid var(--border-color);
             border-radius: 16px;
-            max-width: 480px;
+            max-width: 500px;
             width: 100%;
             padding: 22px;
         }
@@ -515,7 +585,7 @@
             padding: 12px;
             font-size: 13px;
             color: var(--text-muted);
-            max-height: 200px;
+            max-height: 220px;
             overflow-y: auto;
             margin-bottom: 16px;
             line-height: 1.4;
@@ -572,6 +642,7 @@
             <div class="status-badges">
                 <span class="badge badge-green" id="micBadge">● Mikrofoni: Thai (th-TH)</span>
                 <span class="badge badge-purple" id="audioEngineBadge">● Ääni: Hybrid (Google+TTS)</span>
+                <span class="badge badge-blue" id="csvStatusBadge">● Sanasto: Ladataan CSV...</span>
             </div>
         </div>
     </div>
@@ -601,7 +672,7 @@
         <div class="quiz-top-bar">
             <div class="quiz-top-left">
                 <span class="cat-tag" id="currentCatTag">Perusteet</span>
-                <span id="progressText">Sana 1 / 8</span>
+                <span id="progressText">Sana 0 / 0</span>
             </div>
             <div class="quiz-top-right">
                 <span class="stat-correct">Oikein: <span id="correctCount">0</span></span>
@@ -613,10 +684,22 @@
         <div class="question-area">
             <div class="prompt-label">MITEN SANOTAAN THAIKSI:</div>
             <div class="question-title-wrap">
-                <div class="question-main" id="questionText">Ladataan...</div>
-                <button class="replay-fi-btn" onclick="speakFinnishQuestion()" title="Kuuntele kysymys suomeksi">🔊</button>
+                <div class="question-main" id="questionText">Ladataan sanasto.csv...</div>
+                <button class="replay-fi-btn" onclick="speakFinnishQuestion(true)" title="Kuuntele kysymys suomeksi">🔊</button>
+                <button class="word-info-btn" id="wordInfoBtn" onclick="toggleWordInfo()" title="Näytä muistisääntö ja käyttövinkki">ℹ️ Info</button>
             </div>
             <div class="question-hint" id="questionHint"></div>
+        </div>
+
+        <div class="word-info-box" id="wordInfoBox">
+            <div class="info-row">
+                <span class="info-label">💡 Muistisääntö:</span>
+                <span id="mnemonicText"></span>
+            </div>
+            <div class="info-row">
+                <span class="usage-label">📌 Käyttö & kulttuuri:</span>
+                <span id="usageText"></span>
+            </div>
         </div>
 
         <div class="action-buttons">
@@ -646,6 +729,7 @@
             <div class="result-actions">
                 <button class="btn-secondary" onclick="playThaiAudio(false)">🔊 Kuuntele uudelleen</button>
                 <button class="btn-secondary" onclick="playThaiAudio(true)">🐢 Hitaasti</button>
+                <button class="btn-secondary" onclick="toggleWordInfo()">ℹ️ Muistisääntö & käyttö</button>
                 <button class="btn-override" id="overrideBtn" onclick="overrideAsCorrect()">
                     ✅ Hyväksy vastaukseni (Oikein)
                 </button>
@@ -655,7 +739,7 @@
     </div>
 
     <div class="footer-info">
-        Versio: <strong id="footerVersion">2026-11-03 15:15</strong> • Vinkki: Paina <strong>Enter</strong> tarkistaaksesi tai siirtyäksesi eteenpäin, tai <strong>+</strong> hyväksyäksesi vastauksen oikeaksi.
+        Versio: <strong id="footerVersion">2026-11-18 18:15</strong> • Vinkki: Paina <strong>Enter</strong> tarkistaaksesi tai siirtyäksesi eteenpäin, <strong>+</strong> hyväksyäksesi vastauksen, tai <strong>ℹ️ Info</strong> nähdäksesi muistisäännön.
     </div>
 </div>
 
@@ -676,8 +760,16 @@
             <input type="text" id="customTh" placeholder="Thain merkeillä..." />
         </div>
         <div class="form-group">
-            <label>Vinkki (valinnainen)</label>
-            <input type="text" id="customHint" placeholder="Muistisääntö..." />
+            <label>Lyhyt vinkki (valinnainen)</label>
+            <input type="text" id="customHint" placeholder="Esim. Tilattaessa..." />
+        </div>
+        <div class="form-group">
+            <label>Muistisääntö Info-nappiin (valinnainen)</label>
+            <input type="text" id="customMnemonic" placeholder="Hauska muistisääntö..." />
+        </div>
+        <div class="form-group">
+            <label>Käyttövinkki Info-nappiin (valinnainen)</label>
+            <input type="text" id="customUsage" placeholder="Miten sanaa käytetään..." />
         </div>
         <div style="display:flex; gap:10px; justify-content:flex-end; margin-top:16px;">
             <button class="btn-secondary" onclick="closeWordModal()">Peruuta</button>
@@ -691,10 +783,16 @@
     <div class="modal">
         <h3>⚙️ Asetukset & Tietoa</h3>
         <div style="margin-bottom: 12px; font-size: 14px;">
-            Sovelluksen versio: <strong id="modalVersion" style="color: var(--accent-amber);">2026-11-03 15:15</strong>
+            Sovelluksen versio: <strong id="modalVersion" style="color: var(--accent-amber);">2026-11-18 18:15</strong>
         </div>
         <label style="display:block; font-size:13px; color:var(--text-muted); margin-bottom:4px;">Viimeisimmät muutokset (Changelog):</label>
         <div class="changelog-box">
+            <h4>Versio 2026-11-18 18:15 (CSV-arkkitehtuuri, Offline SW & Info-nappi)</h4>
+            <p>• Sanasto eriytetty ulkoiseen <code>sanasto.csv</code>-tiedostoon (198 sanaa ja fraasia, 7 kategoriaa).</p>
+            <p>• Lisätty Service Worker (<code>sw.js</code>) offline-välimuistia varten.</p>
+            <p>• Lisätty <code>ℹ️ Info</code> -painike muistisäännöille ja käyttövinkeille.</p>
+            <p>• Lisätty uudet ravintola-, hotelli-, small talk-, suunta-, tunne- ja sääfraasit sekä luvut 0–100 000.</p>
+            <br>
             <h4>Versio 2026-11-03 15:15 (Numerotäydennys)</h4>
             <p>• Lisätty numerot 0, 6–10, sekä luvut 200, 1000, 2000, 100000, 23, 67, 43, 1200, 1500 ja 3592 kategoriaan Hinnat & Numerot.</p>
             <br>
@@ -708,67 +806,18 @@
 </div>
 
 <script>
-    const APP_VERSION = "2026-11-03 15:15";
+    const APP_VERSION = "2026-11-18 18:15";
     document.getElementById('footerVersion').innerText = APP_VERSION;
     document.getElementById('modalVersion').innerText = APP_VERSION;
 
-    const defaultWords = [
-        { cat: "Perusteet", fi: "Hei / Päivää", hint: "Yleistervehdys", th: "สวัสดี", rom: "sawasdee", alts: ["sawatdee", "sawadee", "savatdii", "savadii"], guide: "Lausutaan: sa-wat-dii" },
-        { cat: "Perusteet", fi: "Kiitos", hint: "Kun kiität palvelusta tai avusta", th: "ขอบคุณ", rom: "khop khun", alts: ["kop kun", "khob khun", "kap kun", "kob kun"], guide: "Lausutaan: khoop-khun (selkeä o)" },
-        { cat: "Perusteet", fi: "Kyllä", hint: "Myöntävä vastaus", th: "ใช่", rom: "chai", alts: ["jai", "sai", "tshai"], guide: "Lausutaan: tšai (laskeva tooni)" },
-        { cat: "Perusteet", fi: "Ei", hint: "Yleinen kieltosana", th: "ไม่", rom: "mai", alts: ["mai chai"], guide: "Lausutaan: mai" },
-        { cat: "Perusteet", fi: "Onnistuu / Käy (Voida)", hint: "Kun jokin sopii tai on mahdollista", th: "ได้", rom: "dai", alts: ["daai"], guide: "Lausutaan: dai" },
-        { cat: "Perusteet", fi: "Anteeksi (Pahoittelu / Huomion pyytäminen)", hint: "Pahoittelu tai huomion pyyntö", th: "ขอโทษ", rom: "kho thot", alts: ["ko tot", "kho tot", "khor thot"], guide: "Lausutaan: khoo-thoot" },
-        { cat: "Perusteet", fi: "Ei se mitään / Ole hyvä", hint: "Vastaus kiitokseen tai pahoitteluun", th: "ไม่เป็นไร", rom: "mai pen rai", alts: ["mai ben rai", "maipenrai"], guide: "Lausutaan: mai-pen-rai" },
-        { cat: "Perusteet", fi: "En ymmärrä", hint: "Kun et ymmärrä puhetta", th: "ไม่เข้าใจ", rom: "mai khao jai", alts: ["mai kao jai", "mai kao chai"], guide: "Lausutaan: mai-khao-tšai" },
+    // Rekisteröidään Service Worker offline-käyttöä varten
+    if ('serviceWorker' in navigator) {
+        window.addEventListener('load', () => {
+            navigator.serviceWorker.register('./sw.js').catch(() => {});
+        });
+    }
 
-        { cat: "Hinnat & Numerot", fi: "Kuinka paljon maksaa?", hint: "Hintaa kysyttäessä", th: "เท่าไหร่", rom: "thao-rai", alts: ["taorai", "thao rai", "tao rai"], guide: "Lausutaan: thao-rai" },
-        { cat: "Hinnat & Numerot", fi: "Liian kallis", hint: "Tinkaamisessa", th: "แพงไป", rom: "phaeng pai", alts: ["peng pai", "paeng pai"], guide: "Lausutaan: phääng-pai" },
-        { cat: "Hinnat & Numerot", fi: "Alennus (Voitko alentaa?)", hint: "Tinkaamisessa", th: "ลดได้ไหม", rom: "lot dai mai", alts: ["lod dai mai"], guide: "Lausutaan: lot-dai-mai" },
-        
-        { cat: "Hinnat & Numerot", fi: "Nolla (0)", hint: "Lukusana 0", th: "ศูนย์", rom: "soon", alts: ["sun"], guide: "Lausutaan: suun" },
-        { cat: "Hinnat & Numerot", fi: "Yksi (1)", hint: "Lukusana 1", th: "หนึ่ง", rom: "nueng", alts: ["nung", "neung"], guide: "Lausutaan: nüng" },
-        { cat: "Hinnat & Numerot", fi: "Kaksi (2)", hint: "Lukusana 2", th: "สอง", rom: "song", alts: ["soong"], guide: "Lausutaan: soong" },
-        { cat: "Hinnat & Numerot", fi: "Kolme (3)", hint: "Lukusana 3", th: "สาม", rom: "sam", alts: ["saam"], guide: "Lausutaan: saam" },
-        { cat: "Hinnat & Numerot", fi: "Neljä (4)", hint: "Lukusana 4", th: "สี่", rom: "see", alts: ["sii", "si"], guide: "Lausutaan: sii" },
-        { cat: "Hinnat & Numerot", fi: "Viisi (5)", hint: "Lukusana 5", th: "ห้า", rom: "haa", alts: ["ha"], guide: "Lausutaan: haa" },
-        { cat: "Hinnat & Numerot", fi: "Kuusi (6)", hint: "Lukusana 6", th: "หก", rom: "hok", alts: ["hog"], guide: "Lausutaan: hok" },
-        { cat: "Hinnat & Numerot", fi: "Seitsemän (7)", hint: "Lukusana 7", th: "เจ็ด", rom: "chet", alts: ["ched"], guide: "Lausutaan: tšet" },
-        { cat: "Hinnat & Numerot", fi: "Kahdeksan (8)", hint: "Lukusana 8", th: "แปด", rom: "paet", alts: ["paed"], guide: "Lausutaan: päät" },
-        { cat: "Hinnat & Numerot", fi: "Yhdeksän (9)", hint: "Lukusana 9", th: "เก้า", rom: "kao", alts: ["gao"], guide: "Lausutaan: kaao" },
-        { cat: "Hinnat & Numerot", fi: "Kymmenen (10)", hint: "Lukusana 10", th: "สิบ", rom: "sip", alts: ["sib"], guide: "Lausutaan: sip" },
-        
-        { cat: "Hinnat & Numerot", fi: "Kaksikymmentä (20)", hint: "Lukusana 20", th: "ยี่สิบ", rom: "yee sip", alts: ["yii sip", "yisip"], guide: "Lausutaan: jii-sip" },
-        { cat: "Hinnat & Numerot", fi: "Kaksikymmentäkolme (23)", hint: "Lukusana 23", th: "ยี่สิบสาม", rom: "yee sip sam", alts: ["yisipsam", "yii sip saam"], guide: "Lausutaan: jii-sip-saam" },
-        { cat: "Hinnat & Numerot", fi: "Neljäkymmentäkolme (43)", hint: "Lukusana 43", th: "สี่สิบสาม", rom: "see sip sam", alts: ["si sip sam", "seesipsam"], guide: "Lausutaan: sii-sip-saam" },
-        { cat: "Hinnat & Numerot", fi: "Kuusikymmentäseitsemän (67)", hint: "Lukusana 67", th: "หกสิบเจ็ด", rom: "hok sip chet", alts: ["hoksipchet", "hok sip ched"], guide: "Lausutaan: hok-sip-tšet" },
-        { cat: "Hinnat & Numerot", fi: "Sata (100)", hint: "Lukusana 100", th: "หนึ่งร้อย", rom: "nueng roi", alts: ["roi", "nung roi"], guide: "Lausutaan: nüng-rooi" },
-        { cat: "Hinnat & Numerot", fi: "Kaksisataa (200)", hint: "Lukusana 200", th: "สองร้อย", rom: "song roi", alts: ["soong roi", "songroi"], guide: "Lausutaan: soong-rooi" },
-        { cat: "Hinnat & Numerot", fi: "Tuhat (1000)", hint: "Lukusana 1000", th: "หนึ่งพัน", rom: "nueng phan", alts: ["phan", "nung phan"], guide: "Lausutaan: nüng-phan" },
-        { cat: "Hinnat & Numerot", fi: "Tuhatkaksisataa (1200)", hint: "Lukusana 1200", th: "หนึ่งพันสองร้อย", rom: "nueng phan song roi", alts: ["nuengphansongroi"], guide: "Lausutaan: nüng-phan-soong-rooi" },
-        { cat: "Hinnat & Numerot", fi: "Tuhatviisisataa (1500)", hint: "Lukusana 1500", th: "หนึ่งพันห้าร้อย", rom: "nueng phan ha roi", alts: ["nuengphanharoi"], guide: "Lausutaan: nüng-phan-haa-rooi" },
-        { cat: "Hinnat & Numerot", fi: "Kaksituhatta (2000)", hint: "Lukusana 2000", th: "สองพัน", rom: "song phan", alts: ["soong phan", "songphan"], guide: "Lausutaan: soong-phan" },
-        { cat: "Hinnat & Numerot", fi: "Kolmetuhatta viisisataa yhdeksänkymmentäkaksi (3592)", hint: "Lukusana 3592", th: "สามพันห้าร้อยเก้าสิบสอง", rom: "sam phan ha roi kao sip song", alts: ["samphanharoikaosipsong"], guide: "Lausutaan: saam-phan-haa-rooi-kaao-sip-soong" },
-        { cat: "Hinnat & Numerot", fi: "Sata tuhatta (100000)", hint: "Lukusana 100 000", th: "หนึ่งแสน", rom: "nueng saen", alts: ["nung saen", "saen"], guide: "Lausutaan: nüng-sään" },
-
-        { cat: "Ravintola & Ruoka", fi: "Vesi", hint: "Juomavesi", th: "น้ำ", rom: "nam", alts: ["naam", "nam plao"], guide: "Lausutaan: naam" },
-        { cat: "Ravintola & Ruoka", fi: "Kana", hint: "Ruoka-aine", th: "ไก่", rom: "gai", alts: ["kai"], guide: "Lausutaan: gai" },
-        { cat: "Ravintola & Ruoka", fi: "Ei tulista", hint: "Tilattaessa", th: "ไม่เผ็ด", rom: "mai phet", alts: ["mai pet", "maiphet"], guide: "Lausutaan: mai-phet" },
-        { cat: "Ravintola & Ruoka", fi: "Herkullista / Hyvää", hint: "Kehuminen", th: "อร่อย", rom: "aroi", alts: ["aroy"], guide: "Lausutaan: a-roi" },
-        { cat: "Ravintola & Ruoka", fi: "Lasku, kiitos", hint: "Maksettaessa", th: "เช็คบิล", rom: "chek bin", alts: ["check bin"], guide: "Lausutaan: tšek-bin" },
-        { cat: "Ravintola & Ruoka", fi: "Kahvi", hint: "Juoma", th: "กาแฟ", rom: "kafae", alts: ["gafae", "kafe"], guide: "Lausutaan: gaa-fää" },
-        { cat: "Ravintola & Ruoka", fi: "Olut", hint: "Juoma", th: "เบียร์", rom: "bia", alts: ["beer"], guide: "Lausutaan: bia" },
-        { cat: "Ravintola & Ruoka", fi: "Riisi", hint: "Peruslisuke", th: "ข้าว", rom: "khao", alts: ["kao"], guide: "Lausutaan: khaao" },
-
-        { cat: "Liikkuminen", fi: "Missä on...?", hint: "Esim. 'Hong nam yuu thii nai'", th: "อยู่ที่ไหน", rom: "yuu thii nai", alts: ["yu ti nai", "thii nai"], guide: "Lausutaan: juu-thii-nai" },
-        { cat: "Liikkuminen", fi: "WC / Vessa", hint: "Vesihuone", th: "ห้องน้ำ", rom: "hong nam", alts: ["hong naam", "hongnam"], guide: "Lausutaan: hong-naam" },
-        { cat: "Liikkuminen", fi: "Suoraan eteenpäin", hint: "Suuntaohje", th: "ตรงไป", rom: "trong pai", alts: ["tong pai"], guide: "Lausutaan: trong-pai" },
-        { cat: "Liikkuminen", fi: "Käänny vasemmalle", hint: "Suuntaohje", th: "เลี้ยวซ้าย", rom: "liao sai", alts: ["leow sai"], guide: "Lausutaan: liao-saai" },
-        { cat: "Liikkuminen", fi: "Käänny oikealle", hint: "Suuntaohje", th: "เลี้ยวขวา", rom: "liao khwaa", alts: ["liao kwa"], guide: "Lausutaan: liao-khwaa" },
-        { cat: "Liikkuminen", fi: "Paljonko maksaa kyyti Bang Saen liikenneympyrään?", hint: "Taksin kysymys", th: "ไปวงเวียนบางแสน เท่าไหร่", rom: "pai wong wian bang saen thao rai", alts: ["pai bang saen thao rai", "pai wong wian bang saen taorai"], guide: "Lausutaan: pai-wong-wian-bang-saen-thao-rai" },
-        { cat: "Liikkuminen", fi: "Pysähdy tässä", hint: "Taksille", th: "จอดที่นี่", rom: "jot thii nii", alts: ["chot thii nii"], guide: "Lausutaan: tšot-thii-nii" }
-    ];
-
+    let defaultWords = [];
     let customWords = JSON.parse(localStorage.getItem('thai_custom_words') || '[]');
     let currentCategory = "Perusteet";
     let activeList = [];
@@ -822,6 +871,45 @@
         document.getElementById('micBadge').innerText = "⚠️ Selain ei tue puheentunnistusta";
     }
 
+    function parseCSV(csvText) {
+        const lines = csvText.split(/\r?\n/).filter(line => line.trim().length > 0);
+        if (lines.length < 2) return [];
+        const result = [];
+        for (let i = 1; i < lines.length; i++) {
+            const cols = lines[i].split(';');
+            if (cols.length < 5) continue;
+            const cat = (cols[0] || "").trim();
+            const fi = (cols[1] || "").trim();
+            const hint = (cols[2] || "").trim();
+            const th = (cols[3] || "").trim();
+            const rom = (cols[4] || "").trim();
+            const altsRaw = (cols[5] || "").trim();
+            const guide = (cols[6] || "").trim();
+            const mnemonic = (cols[7] || "").trim();
+            const usage = (cols[8] || "").trim();
+
+            const alts = altsRaw ? altsRaw.split('|').map(s => s.trim()).filter(Boolean) : [];
+            result.push({ cat, fi, hint, th, rom, alts, guide, mnemonic, usage });
+        }
+        return result;
+    }
+
+    async function loadVocabularyFromCSV() {
+        const badge = document.getElementById('csvStatusBadge');
+        try {
+            const response = await fetch('./sanasto.csv');
+            if (!response.ok) throw new Error("HTTP " + response.status);
+            const text = await response.text();
+            defaultWords = parseCSV(text);
+            badge.innerText = `● Sanasto: CSV (${defaultWords.length} sanaa)`;
+            selectCategory("Perusteet", false);
+        } catch (err) {
+            badge.innerText = "⚠️ Virhe: sanasto.csv ei latautunut";
+            document.getElementById('questionText').innerText = "sanasto.csv puuttuu";
+            document.getElementById('statusLine').innerText = "Varmista, että sanasto.csv on samassa kansiossa index.html-tiedoston kanssa.";
+        }
+    }
+
     function stopAllAudio() {
         if ('speechSynthesis' in window) {
             window.speechSynthesis.cancel();
@@ -860,8 +948,11 @@
         if (!word) return;
 
         let thaiToSpeak = word.th;
-        if (politeMode === "khrap") thaiToSpeak += " ครับ";
-        else if (politeMode === "kha") thaiToSpeak += " ค่ะ";
+        const alreadyHasPolite = /(ครับ|ค่ะ|คะ)$/.test(thaiToSpeak.trim());
+        if (!alreadyHasPolite) {
+            if (politeMode === "khrap") thaiToSpeak += " ครับ";
+            else if (politeMode === "kha") thaiToSpeak += " ค่ะ";
+        }
 
         const rate = slow ? 0.55 : audioSpeed;
         const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=th&q=${encodeURIComponent(thaiToSpeak)}`;
@@ -884,12 +975,20 @@
     function normalizeRomanized(str) {
         return (str || "")
             .toLowerCase()
-            .replace(/\b(khrap|krap|kap|kha|ka)\b/g, '')
+            .normalize("NFD")
+            .replace(/[\u0300-\u036f]/g, "")
+            .replace(/\b(khrap|krap|kap|kha|ka|na)\b/g, '')
             .replace(/[-_.,?!]/g, ' ')
             .replace(/kh/g, 'k')
             .replace(/ph/g, 'p')
             .replace(/th/g, 't')
+            .replace(/dt/g, 't')
+            .replace(/bp/g, 'p')
             .replace(/ch/g, 'j')
+            .replace(/g/g, 'k')
+            .replace(/y/g, 'j')
+            .replace(/w/g, 'v')
+            .replace(/aaw/g, 'o')
             .replace(/aa/g, 'a')
             .replace(/ee/g, 'i')
             .replace(/ii/g, 'i')
@@ -901,7 +1000,7 @@
 
     function normalizeThaiScript(str) {
         return (str || "")
-            .replace(/(ครับ|ค่ะ|คะ|\s+)/g, '')
+            .replace(/(ครับ|ค่ะ|คะ|นะ|\s+|!|\?)/g, '')
             .trim();
     }
 
@@ -927,12 +1026,17 @@
 
     function buildCategories() {
         const allWords = [...defaultWords, ...customWords];
+        const uniqueCats = [];
+        defaultWords.forEach(w => {
+            if (w.cat && !uniqueCats.includes(w.cat)) uniqueCats.push(w.cat);
+        });
+
         const categories = [
             { name: "Kaikki", count: allWords.length },
-            { name: "Perusteet", count: defaultWords.filter(w => w.cat === "Perusteet").length },
-            { name: "Hinnat & Numerot", count: defaultWords.filter(w => w.cat === "Hinnat & Numerot").length },
-            { name: "Ravintola & Ruoka", count: defaultWords.filter(w => w.cat === "Ravintola & Ruoka").length },
-            { name: "Liikkuminen", count: defaultWords.filter(w => w.cat === "Liikkuminen").length },
+            ...uniqueCats.map(catName => ({
+                name: catName,
+                count: defaultWords.filter(w => w.cat === catName).length
+            })),
             { name: "Omat sanat", count: customWords.length }
         ];
 
@@ -943,13 +1047,13 @@
             const btn = document.createElement('button');
             btn.className = 'pill-btn' + (c.name === currentCategory ? ' active' : '');
             btn.innerText = `${c.name} (${c.count})`;
-            btn.onclick = () => selectCategory(c.name);
+            btn.onclick = () => selectCategory(c.name, true);
             container.appendChild(btn);
         });
     }
 
-    function selectCategory(catName) {
-        userHasInteracted = true;
+    function selectCategory(catName, fromUserClick = true) {
+        if (fromUserClick) userHasInteracted = true;
         currentCategory = catName;
         const allWords = [...defaultWords, ...customWords];
 
@@ -962,8 +1066,10 @@
         }
 
         if (activeList.length === 0) {
-            alert("Tässä kategoriassa ei ole sanoja. Lisää ensin omia sanoja!");
-            selectCategory("Perusteet");
+            if (catName === "Omat sanat") {
+                alert("Tässä kategoriassa ei ole sanoja. Lisää ensin omia sanoja!");
+                selectCategory("Perusteet", fromUserClick);
+            }
             return;
         }
 
@@ -976,11 +1082,16 @@
         answerRevealed = false;
         currentRoundCorrect = false;
         const word = activeList[currentIndex];
+        if (!word) return;
 
         document.getElementById('currentCatTag').innerText = word.cat || "Omat sanat";
         document.getElementById('progressText').innerText = `Sana ${currentIndex + 1} / ${activeList.length}`;
         document.getElementById('questionText').innerText = word.fi;
         document.getElementById('questionHint').innerText = word.hint || "";
+
+        document.getElementById('mnemonicText').innerText = word.mnemonic || "Ei tallennettua muistisääntöä tälle sanalle.";
+        document.getElementById('usageText').innerText = word.usage || (word.guide || "Käytetään yleisenä ilmaisuna.");
+        document.getElementById('wordInfoBox').style.display = "none";
 
         const inputEl = document.getElementById('textAnswerInput');
         inputEl.value = "";
@@ -988,6 +1099,15 @@
         document.getElementById('statusLine').innerText = "Puhu vastaus mikrofoniin tai kirjoita se kenttään.";
 
         speakFinnishQuestion();
+    }
+
+    function toggleWordInfo() {
+        const box = document.getElementById('wordInfoBox');
+        if (box.style.display === "block") {
+            box.style.display = "none";
+        } else {
+            box.style.display = "block";
+        }
     }
 
     function toggleListening() {
@@ -1160,13 +1280,25 @@
         const rom = document.getElementById('customRom').value.trim();
         const th = document.getElementById('customTh').value.trim() || rom;
         const hint = document.getElementById('customHint').value.trim();
+        const mnemonic = document.getElementById('customMnemonic').value.trim();
+        const usage = document.getElementById('customUsage').value.trim();
 
         if (!fi || !rom) {
             alert("Täytä vähintään suomenkielinen sana ja litterointi!");
             return;
         }
 
-        const newWord = { cat: "Omat sanat", fi, rom, th, hint, alts: [], guide: `Lausutaan: ${rom}` };
+        const newWord = {
+            cat: "Omat sanat",
+            fi,
+            rom,
+            th,
+            hint,
+            alts: [],
+            guide: `Lausutaan: ${rom}`,
+            mnemonic: mnemonic || `Oma muistisääntö sanalle ${rom}.`,
+            usage: usage || "Oma tallennettu sana."
+        };
         customWords.push(newWord);
         localStorage.setItem('thai_custom_words', JSON.stringify(customWords));
 
@@ -1174,6 +1306,8 @@
         document.getElementById('customRom').value = '';
         document.getElementById('customTh').value = '';
         document.getElementById('customHint').value = '';
+        document.getElementById('customMnemonic').value = '';
+        document.getElementById('customUsage').value = '';
         closeWordModal();
         buildCategories();
     }
@@ -1197,7 +1331,7 @@
         }
     });
 
-    selectCategory("Perusteet");
+    loadVocabularyFromCSV();
 </script>
 
 </body>
